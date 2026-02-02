@@ -1,72 +1,7 @@
 import pandas as pd
 import streamlit as st
-
-# --- CONFIGURATION: CATEGORY RULES ---
-CATEGORY_RULES = {
-    # --- TRANSFERS (Ignored in charts) ---
-    'AMERICAN EXPRESS': 'Transfer',      # Bank payment to Amex
-    'BETALING MOTTATT': 'Transfer',      # Amex receiving payment
-    'OVERFØRING': 'Transfer',            # Generic bank transfers
-    'SPAREKONTO': 'Transfer',            # Savings
-    'AKSJESPAREKONTO': 'Transfer',
-    'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
-    'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',         
-    
-    # --- SPENDING CATEGORIES ---
-    # Groceries
-    'REMA': 'Groceries',
-    'KIWI': 'Groceries',
-    'EXTRA': 'Groceries',
-    'MENY': 'Groceries',
-    'BUNNPRIS': 'Groceries',
-    'MATKROKEN': 'Groceries',
-    
-    # Transport
-    'CIRCLE K': 'Transport',
-    'SHELL': 'Transport',
-    'UNO-X': 'Transport',
-    'PARKERING': 'Transport',
-    'RYDE': 'Transport',
-    'VOI': 'Transport',
-    'BOM': 'Transport',
-    'VY': 'Transport',
-    'RUTER': 'Transport',
-    'SKYSS': 'Transport',
-    
-    # Shopping
-    'ZALANDO': 'Shopping',
-    'H&M': 'Shopping',
-    'VOLT': 'Shopping',
-    'JERNIA': 'Shopping',
-    'IKEA': 'Shopping',
-    'ELKJOEP': 'Electronics',
-    'POWER': 'Electronics',
-    'APPLE': 'Electronics',
-    
-    # Food & Drinks
-    'BURGER': 'Dining Out',
-    'MCDONALDS': 'Dining Out',
-    'DOMINOS': 'Dining Out',
-    'RESTAURANT': 'Dining Out',
-    'STARBUCKS': 'Dining Out',
-    '7-ELEVEN': 'Dining Out',
-    'NARVESEN': 'Dining Out',
-    'BAKER': 'Dining Out',
-    
-    # Housing & Utilities
-    'STRØM': 'Utilities',
-    'FJORDKRAFT': 'Utilities',
-    'LEIE': 'Rent',
-    'HUSLEIE': 'Rent',
-    'LÅN': 'Mortgage',
-    
-    # Entertainment
-    'NETFLIX': 'Entertainment',
-    'SPOTIFY': 'Entertainment',
-    'HBO': 'Entertainment',
-    'KINO': 'Entertainment',
-    'VIPPS': 'Vipps (Unsorted)'
-}
+# IMPORT the rules from your new separate file
+from categories import CATEGORY_RULES 
 
 def categorize_transaction(description):
     """
@@ -79,12 +14,12 @@ def categorize_transaction(description):
     description_upper = description.upper()
     
     for keyword, category in CATEGORY_RULES.items():
-        if keyword in description_upper:
+        if keyword.upper() in description_upper:
             return category
             
     return 'Uncategorized'
 
-# --- CLEANING FUNCTIONS (Unchanged from Sprint 3) ---
+# --- CLEANING FUNCTIONS ---
 
 def clean_bank_data(df):
     if 'Bokføringsdato' in df.columns:
