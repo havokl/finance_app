@@ -1,83 +1,90 @@
 import pandas as pd
 import streamlit as st
 
-# --- CONFIGURATION: YOUR CATEGORY RULES ---
-# You can now write these in any case (e.g., "Vipps", "VIPPS", "vipps")
+# --- CONFIGURATION: CATEGORY RULES ---
 CATEGORY_RULES = {
+    # --- TRANSFERS (Ignored in charts) ---
+    'AMERICAN EXPRESS': 'Transfer',      # Bank payment to Amex
+    'BETALING MOTTATT': 'Transfer',      # Amex receiving payment
+    'OVERFØRING': 'Transfer',            # Generic bank transfers
+    'SPAREKONTO': 'Transfer',            # Savings
+    'AKSJESPAREKONTO': 'Transfer',
+    'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
+    'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',         
+    
+    # --- SPENDING CATEGORIES ---
     # Groceries
     'REMA': 'Groceries',
     'KIWI': 'Groceries',
     'EXTRA': 'Groceries',
     'MENY': 'Groceries',
     'BUNNPRIS': 'Groceries',
+    'MATKROKEN': 'Groceries',
     
-    # Transport & Car
+    # Transport
     'CIRCLE K': 'Transport',
     'SHELL': 'Transport',
+    'UNO-X': 'Transport',
     'PARKERING': 'Transport',
     'RYDE': 'Transport',
     'VOI': 'Transport',
-    '1-2-3': 'Transport',
-    'WIDEROE': 'Transport',
-    'SAS': 'Transport',
-    'NORWEGIAN': 'Transport',
+    'BOM': 'Transport',
+    'VY': 'Transport',
+    'RUTER': 'Transport',
+    'SKYSS': 'Transport',
     
     # Shopping
     'ZALANDO': 'Shopping',
     'H&M': 'Shopping',
     'VOLT': 'Shopping',
-    'EAST WEST': 'Shopping',
-    'LINK BRANDS': 'Shopping',
     'JERNIA': 'Shopping',
+    'IKEA': 'Shopping',
     'ELKJOEP': 'Electronics',
     'POWER': 'Electronics',
-    'XXL': 'Electronics',
+    'APPLE': 'Electronics',
     
     # Food & Drinks
     'BURGER': 'Dining Out',
     'MCDONALDS': 'Dining Out',
+    'DOMINOS': 'Dining Out',
     'RESTAURANT': 'Dining Out',
     'STARBUCKS': 'Dining Out',
     '7-ELEVEN': 'Dining Out',
-
+    'NARVESEN': 'Dining Out',
+    'BAKER': 'Dining Out',
     
     # Housing & Utilities
     'STRØM': 'Utilities',
+    'FJORDKRAFT': 'Utilities',
     'LEIE': 'Rent',
+    'HUSLEIE': 'Rent',
     'LÅN': 'Mortgage',
     
-    # Subscriptions & Apps
-    'NETFLIX': 'Subscriptions',
-    'SPOTIFY': 'Subscriptions',
-    'HBO': 'Subscriptions',
-    'VIPPS': 'Vipps (Unsorted)', # Specific rule for Vipps
-    'APPLE': 'Subscriptions',
-    '365 B': 'Subscriptions',
-    'MEDLEMSAVGIFT': 'Subscriptions',
-
-    # Savings
-    'BITCOIN': 'Savings'
+    # Entertainment
+    'NETFLIX': 'Entertainment',
+    'SPOTIFY': 'Entertainment',
+    'HBO': 'Entertainment',
+    'KINO': 'Entertainment',
+    'VIPPS': 'Vipps (Unsorted)'
 }
 
 def categorize_transaction(description):
     """
     Looks for keywords in the description and returns the matching category.
-    Fully case-insensitive for both description and keywords.
+    Fully case-insensitive.
     """
     if not isinstance(description, str):
         return 'Uncategorized'
     
-    # 1. Normalize the transaction text to UPPERCASE
-    description_upper = description.upper() 
+    description_upper = description.upper()
     
     for keyword, category in CATEGORY_RULES.items():
-        # 2. Normalize the keyword to UPPERCASE too
-        if keyword.upper() in description_upper:
+        if keyword in description_upper:
             return category
             
     return 'Uncategorized'
 
-# --- EXISTING CLEANING FUNCTIONS ---
+# --- CLEANING FUNCTIONS (Unchanged from Sprint 3) ---
 
 def clean_bank_data(df):
     if 'Bokføringsdato' in df.columns:
@@ -120,6 +127,7 @@ def clean_amex_csv(df):
         df['Amount'] = df['Amount'].str.replace('.', '', regex=False)
         df['Amount'] = df['Amount'].str.replace(',', '.', regex=False)
         df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
+        # Flip expenses to negative
         df['Amount'] = df['Amount'] * -1
 
     if 'Date' in df.columns:
@@ -128,8 +136,6 @@ def clean_amex_csv(df):
     df['Source'] = 'Credit Card'
     df['Type'] = 'Credit Card Transaction'
     return df
-
-# --- MAIN PROCESSOR ---
 
 def process_files(uploaded_files):
     all_dataframes = []
@@ -143,7 +149,6 @@ def process_files(uploaded_files):
                 df_raw = pd.read_csv(uploaded_file)
                 df_clean = clean_amex_csv(df_raw)
                 all_dataframes.append(df_clean)
-                
             elif ";" in first_line:
                 try:
                     df_raw = pd.read_csv(uploaded_file, sep=';', encoding='utf-8')
@@ -161,7 +166,6 @@ def process_files(uploaded_files):
     if all_dataframes:
         final_df = pd.concat(all_dataframes, ignore_index=True)
         
-        # Apply Case-Insensitive Categorization
         if 'Description' in final_df.columns:
             final_df['Category'] = final_df['Description'].apply(categorize_transaction)
         else:
