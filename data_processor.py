@@ -2,8 +2,7 @@ import pandas as pd
 import streamlit as st
 
 # --- CONFIGURATION: YOUR CATEGORY RULES ---
-# Modify this dictionary to fit your life!
-# Format: "KEYWORD": "CATEGORY"
+# You can now write these in any case (e.g., "Vipps", "VIPPS", "vipps")
 CATEGORY_RULES = {
     # Groceries
     'REMA': 'Groceries',
@@ -18,14 +17,21 @@ CATEGORY_RULES = {
     'PARKERING': 'Transport',
     'RYDE': 'Transport',
     'VOI': 'Transport',
+    '1-2-3': 'Transport',
+    'WIDEROE': 'Transport',
+    'SAS': 'Transport',
+    'NORWEGIAN': 'Transport',
     
     # Shopping
     'ZALANDO': 'Shopping',
     'H&M': 'Shopping',
     'VOLT': 'Shopping',
+    'EAST WEST': 'Shopping',
+    'LINK BRANDS': 'Shopping',
     'JERNIA': 'Shopping',
     'ELKJOEP': 'Electronics',
     'POWER': 'Electronics',
+    'XXL': 'Electronics',
     
     # Food & Drinks
     'BURGER': 'Dining Out',
@@ -33,38 +39,47 @@ CATEGORY_RULES = {
     'RESTAURANT': 'Dining Out',
     'STARBUCKS': 'Dining Out',
     '7-ELEVEN': 'Dining Out',
+
     
     # Housing & Utilities
     'STRØM': 'Utilities',
     'LEIE': 'Rent',
     'LÅN': 'Mortgage',
     
-    # Subscriptions
-    'NETFLIX': 'Entertainment',
-    'SPOTIFY': 'Entertainment',
-    'HBO': 'Entertainment',
-    'VIPPS': 'Vipps (Check Details)' # Fallback for vague Vipps payments
+    # Subscriptions & Apps
+    'NETFLIX': 'Subscriptions',
+    'SPOTIFY': 'Subscriptions',
+    'HBO': 'Subscriptions',
+    'VIPPS': 'Vipps (Unsorted)', # Specific rule for Vipps
+    'APPLE': 'Subscriptions',
+    '365 B': 'Subscriptions',
+    'MEDLEMSAVGIFT': 'Subscriptions',
+
+    # Savings
+    'BITCOIN': 'Savings'
 }
 
 def categorize_transaction(description):
     """
     Looks for keywords in the description and returns the matching category.
+    Fully case-insensitive for both description and keywords.
     """
     if not isinstance(description, str):
         return 'Uncategorized'
     
-    description = description.upper() # Case-insensitive matching
+    # 1. Normalize the transaction text to UPPERCASE
+    description_upper = description.upper() 
     
     for keyword, category in CATEGORY_RULES.items():
-        if keyword in description:
+        # 2. Normalize the keyword to UPPERCASE too
+        if keyword.upper() in description_upper:
             return category
             
     return 'Uncategorized'
 
-# --- EXISTING CLEANING FUNCTIONS (unchanged) ---
+# --- EXISTING CLEANING FUNCTIONS ---
 
 def clean_bank_data(df):
-    # ... (Keep previous logic) ...
     if 'Bokføringsdato' in df.columns:
         df = df[df['Bokføringsdato'] != 'Reservert']
 
@@ -91,7 +106,6 @@ def clean_bank_data(df):
     return df
 
 def clean_amex_csv(df):
-    # ... (Keep previous logic) ...
     column_mapping = {
         'Dato': 'Date',
         'Beløp': 'Amount',
@@ -147,8 +161,7 @@ def process_files(uploaded_files):
     if all_dataframes:
         final_df = pd.concat(all_dataframes, ignore_index=True)
         
-        # --- NEW: APPLY CATEGORIZATION ---
-        # We use .apply to run our function on every row
+        # Apply Case-Insensitive Categorization
         if 'Description' in final_df.columns:
             final_df['Category'] = final_df['Description'].apply(categorize_transaction)
         else:

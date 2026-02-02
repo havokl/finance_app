@@ -63,12 +63,36 @@ with col1:
 with col2:
     st.subheader("📊 Spending by Category")
     
-    # Simple grouping logic
     if 'Category' in df.columns and 'Amount' in df.columns:
-        category_sum = df.groupby("Category")["Amount"].sum().reset_index()
+        # 1. Filter for Expenses only (Negative values)
+        # We don't want Income (positive numbers) to mess up the expense chart
+        expenses_df = df[df['Amount'] < 0].copy()
         
-        # Create a Donut chart using Plotly
-        fig = px.pie(category_sum, values='Amount', names='Category', hole=0.4)
-        st.plotly_chart(fig, use_container_width=True)
+        # 2. Convert to Absolute Values (Positive) so the Pie Chart can render
+        expenses_df['Abs_Amount'] = expenses_df['Amount'].abs()
+        
+        if not expenses_df.empty:
+            # 3. Group by Category
+            category_sum = expenses_df.groupby("Category")["Abs_Amount"].sum().reset_index()
+            
+            # 4. Render Chart
+            fig = px.pie(
+                category_sum, 
+                values='Abs_Amount', 
+                names='Category', 
+                hole=0.4,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            # Add hover info to show currency
+            fig.update_traces(textinfo='percent+label')
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # 5. Show Total Spend
+            total_spend = expenses_df['Abs_Amount'].sum()
+            st.metric("Total Expenses", f"NOK {total_spend:,.2f}")
+            
+        else:
+            st.info("No expenses found in this data.")
     else:
-        st.warning("The uploaded CSV does not have 'Category' or 'Amount' columns.")
+        st.warning("Data missing necessary columns.")
