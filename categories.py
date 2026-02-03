@@ -21,7 +21,7 @@ CATEGORY_RULES = {
     'BUNNPRIS': 'Groceries',
     'MATKROKEN': 'Groceries',
     
-    # Transport
+    # Transport & Travel
     'CIRCLE K': 'Transport',
     'SHELL': 'Transport',
     'UNO-X': 'Transport',
@@ -32,6 +32,10 @@ CATEGORY_RULES = {
     'VY': 'Transport',
     'RUTER': 'Transport',
     'SKYSS': 'Transport',
+    'NORWEGIAN': 'Travel',
+    'SAS': 'Travel',
+    'WIDEROE': 'Travel',
+    'FLYTOGET': 'Travel',
     
     # Shopping
     'ZALANDO': 'Shopping',
@@ -39,9 +43,15 @@ CATEGORY_RULES = {
     'VOLT': 'Shopping',
     'JERNIA': 'Shopping',
     'IKEA': 'Shopping',
+    'LINK BRANDS': 'Shopping',
+    'SPORT OUTLET': 'Shopping',
+    'EAST WEST': 'Shopping',
+    'NORMAL': 'Shopping',
+    'XXL NOR': 'Shopping',
     'ELKJOEP': 'Electronics',
     'POWER': 'Electronics',
     'APPLE': 'Electronics',
+    'ELEKTROIMPORTOEREN': 'Electronics',
     
     # Food & Drinks
     'BURGER': 'Dining Out',
@@ -56,14 +66,23 @@ CATEGORY_RULES = {
     # Housing & Utilities
     'STRØM': 'Utilities',
     'FJORDKRAFT': 'Utilities',
+    'TELENOR': 'Utilities',
+    
     'LEIE': 'Rent',
     'HUSLEIE': 'Rent',
     'LÅN': 'Mortgage',
+
+    #INSURANCE
+    'FRENDE': 'INSURANCE',
+    'IF FORSIKRING': 'INSURANCE',
+    'TRYG FORSIKRING': 'INSURANCE',
+    'GJENSIDIGE FORSIKRING': 'INSURANCE',
     
-    # Entertainment
-    'NETFLIX': 'Entertainment',
-    'SPOTIFY': 'Entertainment',
-    'HBO': 'Entertainment',
-    'KINO': 'Entertainment',
+    # Entertainment & Subsriptions
+    'NETFLIX': 'Subscriptions',
+    'SPOTIFY': 'Subscriptions',
+    'HBO': 'Subscriptions',
+    'MEDLEMSAVGIFT': 'Subscriptions',
+    #'KINO': 'Entertainment',
     'VIPPS': 'Vipps (Unsorted)'
 }
