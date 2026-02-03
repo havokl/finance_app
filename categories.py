@@ -16,7 +16,7 @@ CATEGORY_RULES = {
     'SPAREKONTO': 'Transfer',            # Savings
     'AKSJESPAREKONTO': 'Transfer',       # Investments
     'EGEN KONTO': 'Transfer',
-    'TIL:': 'Transfer',                  # Often used for transfers (check this!)
+    'TIL:': 'Transfer',                  # Often used for transfers
     'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
     'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',
     'TIL HÅVARD ØKLAND': 'Transfer',
@@ -24,7 +24,6 @@ CATEGORY_RULES = {
     'TIL MIE KREYBU': 'Transfer',
     'FRA MIE KREYBU': 'Transfer',
     'TIL TRUMF': 'Transfer',
-
 
     # --- EXPENSES (Money Out) ---
     # Groceries
@@ -37,7 +36,6 @@ CATEGORY_RULES = {
     'COOP OBS': 'Groceries',
     'JOKER': 'Groceries',
 
-    
     # Transport & Travel
     'CIRCLE K': 'Transport',
     'SHELL': 'Transport',
@@ -80,7 +78,6 @@ CATEGORY_RULES = {
     'IKEA': 'Furniture & Appliances',
     'EUROPRIS': 'Furniture & Appliances',
     'JULA NORGE': 'Furniture & Appliances',
-
     
     # Food & Drinks
     'BURGER': 'Dining/Drinks',
@@ -98,7 +95,6 @@ CATEGORY_RULES = {
     'MAGDA': 'Dining/Drinks',
     'BRIAN BORU': 'Dining/Drinks',
     
-    
     # Housing & Utilities
     'STRØM': 'Utilities',
     'FJORDKRAFT': 'Utilities',
@@ -110,22 +106,47 @@ CATEGORY_RULES = {
     'TIL OLIVER TRYGVE BINDINGSBØ': 'Rent', 
     'LÅN': 'Mortgage',
 
-    #INSURANCE
+    # Insurance
     'FRENDE': 'INSURANCE',
     'IF FORSIKRING': 'INSURANCE',
     'TRYG FORSIKRING': 'INSURANCE',
     'GJENSIDIGE FORSIKRING': 'INSURANCE',
     
-    # Entertainment & Subsriptions
+    # Entertainment & Subscriptions
     'NETFLIX': 'Subscriptions',
     'SPOTIFY': 'Subscriptions',
     'HBO': 'Subscriptions',
     'MEDLEMSAVGIFT': 'Subscriptions',
     'SKY FITNESS': 'Subscriptions',
     'MICROSOFT 365': 'Subscriptions',
-    #'KINO': 'Entertainment',
     'VIPPS': 'Vipps (Unsorted)',
-    #Saving
+    
+    # Saving
     'BARE BITCOIN': 'Saving'
+}
 
+# --- EXPENSE TYPES MAPPING ---
+# This maps your Categories to "Fixed" (Must haves) or "Variable" (Nice to haves)
+EXPENSE_TYPES = {
+    # Fixed Expenses (Recurring / Necessary)
+    'Rent': 'Fixed',
+    'Mortgage': 'Fixed',
+    'Utilities': 'Fixed',
+    'INSURANCE': 'Fixed',      # Added
+    'Subscriptions': 'Fixed',  # Renamed from Entertainment
+    'Saving': 'Fixed',         # Treating saving as a fixed obligation
+    
+    # Variable Expenses (Lifestyle / One-off)
+    'Groceries': 'Variable',
+    'Transport': 'Variable',
+    'Travel': 'Variable',      # Added
+    'Dining/Drinks': 'Variable', # Renamed from Dining Out
+    'Shopping': 'Variable',
+    'Electronics': 'Variable',
+    'Furniture & Appliances': 'Variable', # Added
+    'Vipps (Unsorted)': 'Variable',
+    
+    # Ignored in Expense Analysis
+    'Transfer': 'Ignore',
+    'Income': 'Ignore'
 }
