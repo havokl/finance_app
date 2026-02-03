@@ -35,18 +35,41 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR ---
+# --- 2. LOAD DATA EARLY (Needed for Sidebar Logic) ---
+df = database.load_all_transactions()
+
+# Calculate uncategorized count for the menu label
+uncat_count = 0
+if not df.empty:
+    uncat_count = len(df[df['Category'] == 'Uncategorized'])
+
+# --- 3. SIDEBAR ---
 with st.sidebar:
     st.title("💰 Finance App")
     st.markdown("---")
     
     st.caption("MAIN MENU")
-    page = st.radio(
+    
+    # Dynamic Label: Show count if there is work to do
+    cat_label = f"🔍 Categorization ({uncat_count})" if uncat_count > 0 else "🔍 Categorization"
+    
+    # Map the display label back to the internal key
+    nav_options = {
+        "📊 Monthly Dashboard": "dashboard",
+        "📈 Long-term Trends": "trends",
+        "⚖️ Fixed vs Variable": "fixed_var",
+        cat_label: "categorization"
+    }
+    
+    selection = st.radio(
         "Navigate", 
-        ["📊 Monthly Dashboard", "📈 Long-term Trends", "⚖️ Fixed vs Variable"],
+        list(nav_options.keys()),
         label_visibility="collapsed",
         key="main_nav"
     )
+    
+    # Get the internal page key (so logic doesn't break when label changes)
+    page = nav_options[selection]
     
     st.markdown("---")
     
@@ -74,31 +97,37 @@ with st.sidebar:
             st.warning("Cleared!")
             st.rerun()
 
-# --- 3. LOAD DATA ---
-df = database.load_all_transactions()
-
+# Stop if no data
 if df.empty:
     st.info("👋 Welcome! Upload your first bank/credit card CSVs in the sidebar to get started.")
     st.stop()
 
-# ==========================================
-#      NEW FEATURE: UNCATEGORIZED REVIEW
-# ==========================================
-uncategorized_df = df[df['Category'] == 'Uncategorized'].copy()
+# --- GLOBAL PROCESSING ---
+df['Month_Year'] = df['Date'].dt.to_period('M')
+df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable') 
 
-if not uncategorized_df.empty:
-    st.warning(f"⚠️ You have {len(uncategorized_df)} uncategorized transactions!")
+
+# ==========================================
+#      VIEW: CATEGORIZATION (The New Pane)
+# ==========================================
+if page == "categorization":
+    st.header("🔍 Categorization")
     
-    with st.expander("🔍 Review & Fix Uncategorized Items", expanded=True):
-        st.markdown("Assign categories below and click **Save Changes**.")
+    uncategorized_df = df[df['Category'] == 'Uncategorized'].copy()
+    
+    if uncategorized_df.empty:
+        st.balloons()
+        st.success("🎉 All caught up! Every transaction is categorized.")
+        st.info("Upload more CSVs to see new items here.")
+    else:
+        st.info(f"You have **{len(uncategorized_df)}** transactions to review.")
         
-        # Get list of valid categories from your settings
-        # We filter out 'Ignore' types if you want, or keep all keys
+        # Get list of valid categories from your settings + standard system ones
         valid_categories = sorted(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])
         
         # Configure the editor
         edited_df = st.data_editor(
-            uncategorized_df[['Date', 'Description', 'Amount', 'Category', 'id']], # Include ID hidden? No, need it for logic
+            uncategorized_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
             column_config={
                 "Category": st.column_config.SelectboxColumn(
                     "Assign Category",
@@ -107,47 +136,43 @@ if not uncategorized_df.empty:
                     options=valid_categories,
                     required=True,
                 ),
-                "id": None, # Hide the ID column from the UI
-                "Date": st.column_config.DatetimeColumn(disabled=True),
+                "id": None, # Hide ID
+                "Date": st.column_config.DatetimeColumn(disabled=True, format="D MMM YYYY"),
                 "Description": st.column_config.TextColumn(disabled=True),
-                "Amount": st.column_config.NumberColumn(disabled=True)
+                "Amount": st.column_config.NumberColumn(disabled=True, format="NOK %.2f")
             },
             hide_index=True,
             use_container_width=True,
-            key="editor_uncat"
+            key="editor_uncat",
+            num_rows="fixed" # Prevent adding new rows
         )
         
-        if st.button("💾 Save Changes"):
-            changes_count = 0
-            
-            # Iterate through the edited dataframe
-            for index, row in edited_df.iterrows():
-                original_row = uncategorized_df.loc[index]
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            if st.button("💾 Save Changes", type="primary", use_container_width=True):
+                changes_count = 0
                 
-                # If the category changed from 'Uncategorized' to something else
-                if row['Category'] != 'Uncategorized':
-                    # Update in Database
-                    success = database.update_transaction_category(row['id'], row['Category'])
-                    if success:
-                        changes_count += 1
-            
-            if changes_count > 0:
-                st.success(f"✅ Updated {changes_count} transactions!")
-                st.rerun()
-            else:
-                st.info("No changes detected.")
-    st.divider()
+                for index, row in edited_df.iterrows():
+                    # We check against the original DF to find what changed
+                    # (Streamlit data editor output has same index as input)
+                    original_cat = uncategorized_df.loc[index, 'Category']
+                    
+                    if row['Category'] != original_cat:
+                        success = database.update_transaction_category(row['id'], row['Category'])
+                        if success:
+                            changes_count += 1
+                
+                if changes_count > 0:
+                    st.toast(f"✅ Updated {changes_count} transactions!", icon="💾")
+                    st.rerun()
+                else:
+                    st.info("No changes detected.")
+
 
 # ==========================================
-#          END NEW FEATURE
+#      VIEW: MONTHLY DASHBOARD
 # ==========================================
-
-# --- GLOBAL PROCESSING ---
-df['Month_Year'] = df['Date'].dt.to_period('M')
-df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable') 
-
-# --- VIEW 1: MONTHLY DASHBOARD ---
-if page == "📊 Monthly Dashboard":
+elif page == "dashboard":
     st.header("📊 Monthly Snapshot")
     
     available_months = sorted(df['Month_Year'].unique().astype(str), reverse=True)
@@ -202,8 +227,11 @@ if page == "📊 Monthly Dashboard":
     with st.expander("📄 View All Transactions"):
         st.dataframe(view_df[['Date', 'Description', 'Category', 'Amount', 'Source']].sort_values(by='Date', ascending=False), use_container_width=True)
 
-# --- VIEW 2: LONG-TERM TRENDS ---
-elif page == "📈 Long-term Trends":
+
+# ==========================================
+#      VIEW: LONG-TERM TRENDS
+# ==========================================
+elif page == "trends":
     st.header("📈 Financial History")
     
     history_df = df.copy()
@@ -241,8 +269,11 @@ elif page == "📈 Long-term Trends":
     fig_line.update_layout(hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-# --- VIEW 3: FIXED VS VARIABLE ---
-elif page == "⚖️ Fixed vs Variable":
+
+# ==========================================
+#      VIEW: FIXED VS VARIABLE
+# ==========================================
+elif page == "fixed_var":
     st.header("⚖️ Fixed vs Variable Analysis")
     
     exp_df = df[(df['Amount'] < 0) & (df['Category'] != 'Transfer') & (df['Category'] != 'Income')].copy()
