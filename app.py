@@ -10,34 +10,24 @@ st.set_page_config(page_title="Finance Dashboard", page_icon="💰", layout="wid
 database.init_db()
 
 # --- CSS FIX: ROBUST MENU STYLING ---
-# This hides the radio circle but keeps the label clickable and adds a hover effect.
 st.markdown("""
 <style>
-    /* Target the container of the radio buttons */
-    [data-testid="stRadio"] > div {
-        gap: 10px; /* Space between buttons */
-    }
-    /* Hide the radio circle (the little dot) */
-    [data-testid="stRadio"] label > div:first-child {
-        display: none;
-    }
-    /* Style the text label to look like a button */
+    [data-testid="stRadio"] > div { gap: 10px; }
+    [data-testid="stRadio"] label > div:first-child { display: none; }
     [data-testid="stRadio"] label {
         padding: 10px 15px;
-        background-color: #f0f2f6; /* Light grey background */
+        background-color: #f0f2f6;
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
         border: 1px solid transparent;
     }
-    /* Hover effect */
     [data-testid="stRadio"] label:hover {
         background-color: #e0e2e6;
         border-color: #d0d2d6;
     }
-    /* Active State (Checking the aria-checked attribute) */
     [data-testid="stRadio"] label[data-checked="true"] {
-        background-color: #e8f0fe; /* Light blue */
+        background-color: #e8f0fe;
         border-color: #4285f4;
         color: #1967d2;
         font-weight: bold;
@@ -45,14 +35,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR (Navigation & Upload) ---
+# --- 2. SIDEBAR ---
 with st.sidebar:
     st.title("💰 Finance App")
     st.markdown("---")
     
-    # NAVIGATION
     st.caption("MAIN MENU")
-    # We use radio, but the CSS above transforms it into buttons
     page = st.radio(
         "Navigate", 
         ["📊 Monthly Dashboard", "📈 Long-term Trends", "⚖️ Fixed vs Variable"],
@@ -62,7 +50,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # UPLOAD SECTION
     st.caption("DATA MANAGEMENT")
     uploaded_files = st.file_uploader("Upload CSVs", type='csv', accept_multiple_files=True)
     
@@ -162,6 +149,7 @@ elif page == "📈 Long-term Trends":
     history_df = df.copy()
     history_df['Month'] = history_df['Date'].dt.strftime('%Y-%m')
     
+    # 1. Income vs Expenses Bar Chart
     monthly_summary = []
     for month in sorted(history_df['Month'].unique()):
         m_df = history_df[history_df['Month'] == month]
@@ -179,15 +167,32 @@ elif page == "📈 Long-term Trends":
     st.plotly_chart(fig_main, use_container_width=True)
     
     st.divider()
+    
+    # 2. Category Trends (LINE CHART)
     st.subheader("Spending Categories over Time")
     
     exp_trend = history_df[(history_df['Amount'] < 0) & (history_df['Category'] != 'Transfer') & (history_df['Category'] != 'Income')].copy()
     exp_trend['Abs_Amount'] = exp_trend['Amount'].abs()
+    
+    # Group by Month AND Category
     cat_monthly = exp_trend.groupby(['Month', 'Category'])['Abs_Amount'].sum().reset_index()
     
-    fig_stack = px.bar(cat_monthly, x='Month', y='Abs_Amount', color='Category', 
-                       color_discrete_sequence=px.colors.qualitative.Pastel)
-    st.plotly_chart(fig_stack, use_container_width=True)
+    # Changed from px.bar to px.line
+    fig_line = px.line(
+        cat_monthly, 
+        x='Month', 
+        y='Abs_Amount', 
+        color='Category', 
+        markers=True, # Adds dots to lines so you can see data points clearly
+        title="Category Trends",
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    
+    # Make the tooltip easier to read
+    fig_line.update_traces(mode="lines+markers")
+    fig_line.update_layout(hovermode="x unified") # Shows all values for that month on hover
+    
+    st.plotly_chart(fig_line, use_container_width=True)
 
 # --- VIEW 3: FIXED VS VARIABLE ---
 elif page == "⚖️ Fixed vs Variable":
