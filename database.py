@@ -109,3 +109,24 @@ def clear_database():
     c.execute("DELETE FROM transactions")
     conn.commit()
     conn.close()
+
+def update_transaction_category(transaction_id, new_category):
+    """
+    Updates the category of a specific transaction.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    
+    try:
+        c.execute('''
+            UPDATE transactions
+            SET category = ?
+            WHERE id = ?
+        ''', (new_category, transaction_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating category: {e}")
+        return False
+    finally:
+        conn.close()

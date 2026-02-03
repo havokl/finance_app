@@ -9,7 +9,7 @@ from categories import EXPENSE_TYPES
 st.set_page_config(page_title="Finance Dashboard", page_icon="💰", layout="wide")
 database.init_db()
 
-# --- CSS FIX: ROBUST MENU STYLING ---
+# --- CSS STYLING ---
 st.markdown("""
 <style>
     [data-testid="stRadio"] > div { gap: 10px; }
@@ -81,6 +81,67 @@ if df.empty:
     st.info("👋 Welcome! Upload your first bank/credit card CSVs in the sidebar to get started.")
     st.stop()
 
+# ==========================================
+#      NEW FEATURE: UNCATEGORIZED REVIEW
+# ==========================================
+uncategorized_df = df[df['Category'] == 'Uncategorized'].copy()
+
+if not uncategorized_df.empty:
+    st.warning(f"⚠️ You have {len(uncategorized_df)} uncategorized transactions!")
+    
+    with st.expander("🔍 Review & Fix Uncategorized Items", expanded=True):
+        st.markdown("Assign categories below and click **Save Changes**.")
+        
+        # Get list of valid categories from your settings
+        # We filter out 'Ignore' types if you want, or keep all keys
+        valid_categories = sorted(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])
+        
+        # Configure the editor
+        edited_df = st.data_editor(
+            uncategorized_df[['Date', 'Description', 'Amount', 'Category', 'id']], # Include ID hidden? No, need it for logic
+            column_config={
+                "Category": st.column_config.SelectboxColumn(
+                    "Assign Category",
+                    help="Select the correct category",
+                    width="medium",
+                    options=valid_categories,
+                    required=True,
+                ),
+                "id": None, # Hide the ID column from the UI
+                "Date": st.column_config.DatetimeColumn(disabled=True),
+                "Description": st.column_config.TextColumn(disabled=True),
+                "Amount": st.column_config.NumberColumn(disabled=True)
+            },
+            hide_index=True,
+            use_container_width=True,
+            key="editor_uncat"
+        )
+        
+        if st.button("💾 Save Changes"):
+            changes_count = 0
+            
+            # Iterate through the edited dataframe
+            for index, row in edited_df.iterrows():
+                original_row = uncategorized_df.loc[index]
+                
+                # If the category changed from 'Uncategorized' to something else
+                if row['Category'] != 'Uncategorized':
+                    # Update in Database
+                    success = database.update_transaction_category(row['id'], row['Category'])
+                    if success:
+                        changes_count += 1
+            
+            if changes_count > 0:
+                st.success(f"✅ Updated {changes_count} transactions!")
+                st.rerun()
+            else:
+                st.info("No changes detected.")
+    st.divider()
+
+# ==========================================
+#          END NEW FEATURE
+# ==========================================
+
 # --- GLOBAL PROCESSING ---
 df['Month_Year'] = df['Date'].dt.to_period('M')
 df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable') 
@@ -89,7 +150,6 @@ df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable')
 if page == "📊 Monthly Dashboard":
     st.header("📊 Monthly Snapshot")
     
-    # Month Selector
     available_months = sorted(df['Month_Year'].unique().astype(str), reverse=True)
     col_sel, _ = st.columns([1, 4])
     with col_sel:
@@ -149,7 +209,6 @@ elif page == "📈 Long-term Trends":
     history_df = df.copy()
     history_df['Month'] = history_df['Date'].dt.strftime('%Y-%m')
     
-    # 1. Income vs Expenses Bar Chart
     monthly_summary = []
     for month in sorted(history_df['Month'].unique()):
         m_df = history_df[history_df['Month'] == month]
@@ -167,31 +226,19 @@ elif page == "📈 Long-term Trends":
     st.plotly_chart(fig_main, use_container_width=True)
     
     st.divider()
-    
-    # 2. Category Trends (LINE CHART)
     st.subheader("Spending Categories over Time")
     
     exp_trend = history_df[(history_df['Amount'] < 0) & (history_df['Category'] != 'Transfer') & (history_df['Category'] != 'Income')].copy()
     exp_trend['Abs_Amount'] = exp_trend['Amount'].abs()
-    
-    # Group by Month AND Category
     cat_monthly = exp_trend.groupby(['Month', 'Category'])['Abs_Amount'].sum().reset_index()
     
-    # Changed from px.bar to px.line
     fig_line = px.line(
-        cat_monthly, 
-        x='Month', 
-        y='Abs_Amount', 
-        color='Category', 
-        markers=True, # Adds dots to lines so you can see data points clearly
-        title="Category Trends",
+        cat_monthly, x='Month', y='Abs_Amount', color='Category', 
+        markers=True, title="Category Trends",
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
-    
-    # Make the tooltip easier to read
     fig_line.update_traces(mode="lines+markers")
-    fig_line.update_layout(hovermode="x unified") # Shows all values for that month on hover
-    
+    fig_line.update_layout(hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
 # --- VIEW 3: FIXED VS VARIABLE ---

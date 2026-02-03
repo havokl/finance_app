@@ -145,7 +145,12 @@ EXPENSE_TYPES = {
     'Electronics': 'Variable',
     'Furniture & Appliances': 'Variable', # Added
     'Vipps (Unsorted)': 'Variable',
+
+    # NEW: Add Misc here
+    'Misc': 'Variable',
     
+
+
     # Ignored in Expense Analysis
     'Transfer': 'Ignore',
     'Income': 'Ignore'
