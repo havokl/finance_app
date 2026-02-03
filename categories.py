@@ -34,6 +34,9 @@ CATEGORY_RULES = {
     'MENY': 'Groceries',
     'BUNNPRIS': 'Groceries',
     'MATKROKEN': 'Groceries',
+    'COOP OBS': 'Groceries',
+    'JOKER': 'Groceries',
+
     
     # Transport & Travel
     'CIRCLE K': 'Transport',
@@ -43,12 +46,14 @@ CATEGORY_RULES = {
     'PARKERING': 'Transport',
     'RYDE': 'Transport',
     'VOI': 'Transport',
+    'KOLUMBUS': 'Transport',
     'BOM': 'Transport',
     'VY': 'Transport',
     'RUTER': 'Transport',
     'SKYSS': 'Transport',
     'FLYT AS': 'Transport',
     'AUTOPASSFERGE': 'Transport',
+    'TORGHATTEN': 'Transport',
 
     'NORWEGIAN': 'Travel',
     'SAS': 'Travel',
@@ -65,6 +70,7 @@ CATEGORY_RULES = {
     'NORMAL': 'Shopping',
     'BODYLAB.NO': 'Shopping',
     'XXL NOR': 'Shopping',
+    'AVARDA*OUTNORTH': 'Shopping',
     'ELKJOEP': 'Electronics',
     'POWER': 'Electronics',
     'APPLE': 'Electronics',
@@ -73,17 +79,25 @@ CATEGORY_RULES = {
     'JERNIA': 'Furniture & Appliances',
     'IKEA': 'Furniture & Appliances',
     'EUROPRIS': 'Furniture & Appliances',
+    'JULA NORGE': 'Furniture & Appliances',
 
     
     # Food & Drinks
-    'BURGER': 'Dining Out',
-    'MCDONALDS': 'Dining Out',
-    'DOMINOS': 'Dining Out',
-    'RESTAURANT': 'Dining Out',
-    'STARBUCKS': 'Dining Out',
-    '7-ELEVEN': 'Dining Out',
-    'NARVESEN': 'Dining Out',
-    'BAKER': 'Dining Out',
+    'BURGER': 'Dining/Drinks',
+    'MCDONALDS': 'Dining/Drinks',
+    'DOMINOS': 'Dining/Drinks',
+    'RESTAURANT': 'Dining/Drinks',
+    'STARBUCKS': 'Dining/Drinks',
+    '7-ELEVEN': 'Dining/Drinks',
+    '7ELEVEN': 'Dining/Drinks',
+    'NARVESEN': 'Dining/Drinks',
+    'GARNES PIZZA OG GRILL': 'Dining/Drinks',
+    'FELIX BERGEN': 'Dining/Drinks',
+    'BAKER': 'Dining/Drinks',
+    'FINNEGAARDEN HOTELL': 'Dining/Drinks',
+    'MAGDA': 'Dining/Drinks',
+    'BRIAN BORU': 'Dining/Drinks',
+    
     
     # Housing & Utilities
     'STRØM': 'Utilities',
