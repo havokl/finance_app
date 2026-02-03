@@ -3,16 +3,30 @@
 # Format: "KEYWORD": "CATEGORY"
 # Keywords are case-insensitive.
 CATEGORY_RULES = {
-    # --- TRANSFERS (Ignored in charts) ---
-    'AMERICAN EXPRESS': 'Transfer',      
-    'BETALING MOTTATT': 'Transfer',      
-    'OVERFØRING': 'Transfer',            
-    'SPAREKONTO': 'Transfer',            
-    'AKSJESPAREKONTO': 'Transfer',       
-    'TIL BARE BITCOIN': 'Transfer', # Example from your bank CSV
-    'TIL OLIVER': 'Transfer',       # Example from your bank CSV
+    # --- INCOME (Money In) ---
+    'AKER BP': 'Income',          # Salary & Travel Reimbursements
+    'LØNN': 'Income',             # Generic Salary
+    'RENTER': 'Income',           # Interest
+    'REISEUTGIFTER': 'Income',    # Travel refunds
+    
+    # --- TRANSFERS (Internal movements - Ignored in Spend Charts) ---
+    'AMERICAN EXPRESS': 'Transfer',      # Payment from Bank -> Amex
+    'BETALING MOTTATT': 'Transfer',      # Payment received by Amex
+    'OVERFØRING': 'Transfer',            # Generic bank transfers
+    'SPAREKONTO': 'Transfer',            # Savings
+    'AKSJESPAREKONTO': 'Transfer',       # Investments
+    'EGEN KONTO': 'Transfer',
+    'TIL:': 'Transfer',                  # Often used for transfers (check this!)
+    'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
+    'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',
+    'TIL HÅVARD ØKLAND': 'Transfer',
+    'FRA HÅVARD ØKLAND': 'Transfer',
+    'TIL MIE KREYBU': 'Transfer',
+    'FRA MIE KREYBU': 'Transfer',
+    'TIL TRUMF': 'Transfer',
 
-    # --- SPENDING CATEGORIES ---
+
+    # --- EXPENSES (Money Out) ---
     # Groceries
     'REMA': 'Groceries',
     'KIWI': 'Groceries',
@@ -25,6 +39,7 @@ CATEGORY_RULES = {
     'CIRCLE K': 'Transport',
     'SHELL': 'Transport',
     'UNO-X': 'Transport',
+    'ESSO': 'Transport',
     'PARKERING': 'Transport',
     'RYDE': 'Transport',
     'VOI': 'Transport',
@@ -32,6 +47,9 @@ CATEGORY_RULES = {
     'VY': 'Transport',
     'RUTER': 'Transport',
     'SKYSS': 'Transport',
+    'FLYT AS': 'Transport',
+    'AUTOPASSFERGE': 'Transport',
+
     'NORWEGIAN': 'Travel',
     'SAS': 'Travel',
     'WIDEROE': 'Travel',
@@ -41,17 +59,21 @@ CATEGORY_RULES = {
     'ZALANDO': 'Shopping',
     'H&M': 'Shopping',
     'VOLT': 'Shopping',
-    'JERNIA': 'Shopping',
-    'IKEA': 'Shopping',
     'LINK BRANDS': 'Shopping',
     'SPORT OUTLET': 'Shopping',
     'EAST WEST': 'Shopping',
     'NORMAL': 'Shopping',
+    'BODYLAB.NO': 'Shopping',
     'XXL NOR': 'Shopping',
     'ELKJOEP': 'Electronics',
     'POWER': 'Electronics',
     'APPLE': 'Electronics',
     'ELEKTROIMPORTOEREN': 'Electronics',
+    'VEST MARKISE': 'Furniture & Appliances',
+    'JERNIA': 'Furniture & Appliances',
+    'IKEA': 'Furniture & Appliances',
+    'EUROPRIS': 'Furniture & Appliances',
+
     
     # Food & Drinks
     'BURGER': 'Dining Out',
@@ -67,9 +89,11 @@ CATEGORY_RULES = {
     'STRØM': 'Utilities',
     'FJORDKRAFT': 'Utilities',
     'TELENOR': 'Utilities',
+    'LYSE TELE': 'Utilities',
     
     'LEIE': 'Rent',
     'HUSLEIE': 'Rent',
+    'TIL OLIVER TRYGVE BINDINGSBØ': 'Rent', 
     'LÅN': 'Mortgage',
 
     #INSURANCE
@@ -83,6 +107,11 @@ CATEGORY_RULES = {
     'SPOTIFY': 'Subscriptions',
     'HBO': 'Subscriptions',
     'MEDLEMSAVGIFT': 'Subscriptions',
+    'SKY FITNESS': 'Subscriptions',
+    'MICROSOFT 365': 'Subscriptions',
     #'KINO': 'Entertainment',
-    'VIPPS': 'Vipps (Unsorted)'
+    'VIPPS': 'Vipps (Unsorted)',
+    #Saving
+    'BARE BITCOIN': 'Saving'
+
 }
