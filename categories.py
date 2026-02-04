@@ -3,128 +3,160 @@
 # Format: "KEYWORD": "CATEGORY"
 # Keywords are case-insensitive.
 CATEGORY_RULES = {
-    # --- INCOME (Money In) ---
-    'AKER BP': 'Income',          # Salary & Travel Reimbursements
-    'LØNN': 'Income',             # Generic Salary
-    'RENTER': 'Income',           # Interest
-    'REISEUTGIFTER': 'Income',    # Travel refunds
-    
-    # --- TRANSFERS (Internal movements - Ignored in Spend Charts) ---
-    'AMERICAN EXPRESS': 'Transfer',      # Payment from Bank -> Amex
-    'BETALING MOTTATT': 'Transfer',      # Payment received by Amex
-    'OVERFØRING': 'Transfer',            # Generic bank transfers
-    'SPAREKONTO': 'Transfer',            # Savings
-    'AKSJESPAREKONTO': 'Transfer',       # Investments
-    'EGEN KONTO': 'Transfer',
-    'TIL:': 'Transfer',                  # Often used for transfers
-    'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
-    'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',
-    'TIL HÅVARD ØKLAND': 'Transfer',
-    'FRA HÅVARD ØKLAND': 'Transfer',
-    'TIL MIE KREYBU': 'Transfer',
-    'FRA MIE KREYBU': 'Transfer',
-    'TIL TRUMF': 'Transfer',
 
-    # --- EXPENSES (Money Out) ---
-    # Groceries
-    'REMA': 'Groceries',
-    'KIWI': 'Groceries',
-    'EXTRA': 'Groceries',
-    'MENY': 'Groceries',
-    'BUNNPRIS': 'Groceries',
-    'MATKROKEN': 'Groceries',
-    'COOP OBS': 'Groceries',
-    'JOKER': 'Groceries',
+    # --- Car ---
+    'AUTOPASSFERGE': 'Car',
+    'CIRCLE K': 'Car',
+    'FLYT AS': 'Car',
+    'PARKLINK': 'Car',
+    'SHELL': 'Car',
+    'STATOIL': 'Car',
+    'TORGHATTEN': 'Car',
+    'UNO-X': 'Car',
 
-    # Transport & Travel
-    'CIRCLE K': 'Transport',
-    'SHELL': 'Transport',
-    'UNO-X': 'Transport',
-    'ESSO': 'Transport',
-    'PARKERING': 'Transport',
-    'RYDE': 'Transport',
-    'VOI': 'Transport',
-    'KOLUMBUS': 'Transport',
-    'BOM': 'Transport',
-    'VY': 'Transport',
-    'RUTER': 'Transport',
-    'SKYSS': 'Transport',
-    'FLYT AS': 'Transport',
-    'AUTOPASSFERGE': 'Transport',
-    'TORGHATTEN': 'Transport',
-
-    'NORWEGIAN': 'Travel',
-    'SAS': 'Travel',
-    'WIDEROE': 'Travel',
-    'FLYTOGET': 'Travel',
-    
-    # Shopping
-    'ZALANDO': 'Shopping',
-    'H&M': 'Shopping',
-    'VOLT': 'Shopping',
-    'LINK BRANDS': 'Shopping',
-    'SPORT OUTLET': 'Shopping',
-    'EAST WEST': 'Shopping',
-    'NORMAL': 'Shopping',
-    'BODYLAB.NO': 'Shopping',
-    'XXL NOR': 'Shopping',
-    'AVARDA*OUTNORTH': 'Shopping',
-    'ELKJOEP': 'Electronics',
-    'POWER': 'Electronics',
-    'APPLE': 'Electronics',
-    'ELEKTROIMPORTOEREN': 'Electronics',
-    'VEST MARKISE': 'Furniture & Appliances',
-    'JERNIA': 'Furniture & Appliances',
-    'IKEA': 'Furniture & Appliances',
-    'EUROPRIS': 'Furniture & Appliances',
-    'JULA NORGE': 'Furniture & Appliances',
-    
-    # Food & Drinks
-    'BURGER': 'Dining/Drinks',
-    'MCDONALDS': 'Dining/Drinks',
-    'DOMINOS': 'Dining/Drinks',
-    'RESTAURANT': 'Dining/Drinks',
-    'STARBUCKS': 'Dining/Drinks',
+    # --- Dining/Drinks ---
     '7-ELEVEN': 'Dining/Drinks',
     '7ELEVEN': 'Dining/Drinks',
-    'NARVESEN': 'Dining/Drinks',
-    'GARNES PIZZA OG GRILL': 'Dining/Drinks',
-    'FELIX BERGEN': 'Dining/Drinks',
     'BAKER': 'Dining/Drinks',
-    'FINNEGAARDEN HOTELL': 'Dining/Drinks',
-    'MAGDA': 'Dining/Drinks',
+    'BGO POINT DOM': 'Dining/Drinks',
     'BRIAN BORU': 'Dining/Drinks',
-    
-    # Housing & Utilities
-    'STRØM': 'Utilities',
-    'FJORDKRAFT': 'Utilities',
-    'TELENOR': 'Utilities',
-    'LYSE TELE': 'Utilities',
-    
-    'LEIE': 'Rent',
-    'HUSLEIE': 'Rent',
-    'TIL OLIVER TRYGVE BINDINGSBØ': 'Rent', 
+    'BURGER': 'Dining/Drinks',
+    'COCA COLA EUROPACIFIC NOR': 'Dining/Drinks',
+    'DOMINOS': 'Dining/Drinks',
+    'FELIX BERGEN': 'Dining/Drinks',
+    'FINNEGAARDEN HOTELL': 'Dining/Drinks',
+    'GARNES PIZZA OG GRILL': 'Dining/Drinks',
+    'ISS AVD 460095 DNB SM 55': 'Dining/Drinks',
+    'KVAERNER STORD ADMIN': 'Dining/Drinks',
+    'MAGDA': 'Dining/Drinks',
+    'MCDBRYGGESPOREN': 'Dining/Drinks',
+    'MCDONALDS': 'Dining/Drinks',
+    'NARVESEN': 'Dining/Drinks',
+    'RESTAURANT': 'Dining/Drinks',
+    'STARBUCKS': 'Dining/Drinks',
+    'TEMPO TEMPO': 'Dining/Drinks',
+    'ZETTLE_*KUNG KUNG THAI TA': 'Dining/Drinks',
+
+    # --- Electronics ---
+    'APPLE': 'Electronics',
+    'ELEKTROIMPORTOEREN': 'Electronics',
+    'ELKJOEP': 'Electronics',
+    'POWER': 'Electronics',
+
+    # --- Furniture & Appliances ---
+    'EUROPRIS': 'Furniture & Appliances',
+    'IKEA': 'Furniture & Appliances',
+    'JERNIA': 'Furniture & Appliances',
+    'JULA NORGE': 'Furniture & Appliances',
+    'VEST MARKISE': 'Furniture & Appliances',
+
+    # --- Gifts ---
+    'BLINDEFORBUNDET': 'Gifts',
+
+    # --- Groceries ---
+    'BUNNPRIS': 'Groceries',
+    'COOP OBS': 'Groceries',
+    'EXTRA': 'Groceries',
+    'JOKER': 'Groceries',
+    'KIWI': 'Groceries',
+    'MATKROKEN': 'Groceries',
+    'MENY': 'Groceries',
+    'REMA': 'Groceries',
+
+    # --- Income ---
+    'AKER BP': 'Income',
+    'FRA AKER SOLUTIONS AS': 'Income',
+    'LØNN': 'Income',
+    'REISEUTGIFTER': 'Income',
+    'RENTER': 'Income',
+
+    # --- Insurance ---
+    'FRENDE': 'Insurance',
+    'GJENSIDIGE FORSIKRING': 'Insurance',
+    'IF FORSIKRING': 'Insurance',
+    'NITO FORSIKRING': 'Insurance',
+    'TRYG FORSIKRING': 'Insurance',
+
+    # --- Mortgage ---
     'LÅN': 'Mortgage',
 
-    # Insurance
-    'FRENDE': 'INSURANCE',
-    'IF FORSIKRING': 'INSURANCE',
-    'TRYG FORSIKRING': 'INSURANCE',
-    'GJENSIDIGE FORSIKRING': 'INSURANCE',
-    
-    # Entertainment & Subscriptions
-    'NETFLIX': 'Subscriptions',
-    'SPOTIFY': 'Subscriptions',
+    # --- Recreation & Well Beeing ---
+    'KINO': 'Recreation & Well Beeing',
+
+    # --- Rent ---
+    'HUSLEIE': 'Rent',
+    'LEIE': 'Rent',
+    'TIL OLIVER TRYGVE BINDINGSBØ': 'Rent',
+
+    # --- Saving ---
+    'BARE BITCOIN': 'Saving',
+
+    # --- Shopping ---
+    'AVARDA*OUTNORTH': 'Shopping',
+    'BERGANS OF NORWAY': 'Shopping',
+    'BODYLAB.NO': 'Shopping',
+    'EAST WEST': 'Shopping',
+    'GJENBRUKEN BERGEN': 'Shopping',
+    'H&M': 'Shopping',
+    'LINK BRANDS': 'Shopping',
+    'NORMAL': 'Shopping',
+    'SPORT OUTLET': 'Shopping',
+    'VOLT': 'Shopping',
+    'XXL NOR': 'Shopping',
+    'ZALANDO': 'Shopping',
+
+    # --- Subscriptions ---
+    'BONNIER PUBLICATIO': 'Subscriptions',
+    'DISNEY PLUS': 'Subscriptions',
     'HBO': 'Subscriptions',
     'MEDLEMSAVGIFT': 'Subscriptions',
-    'SKY FITNESS': 'Subscriptions',
     'MICROSOFT 365': 'Subscriptions',
-    'VIPPS': 'Vipps (Unsorted)',
-    
-    # Saving
-    'BARE BITCOIN': 'Saving'
-}
+    'NETFLIX': 'Subscriptions',
+    'SKY FITNESS': 'Subscriptions',
+    'SPOTIFY': 'Subscriptions',
 
+    # --- Transfer ---
+    'AKSJESPAREKONTO': 'Transfer',
+    'AMERICAN EXPRESS': 'Transfer',
+    'BETALING MOTTATT': 'Transfer',
+    'EGEN KONTO': 'Transfer',
+    'FRA HÅVARD RÅHEIM ØKLAND': 'Transfer',
+    'FRA HÅVARD ØKLAND': 'Transfer',
+    'FRA MIE KREYBU': 'Transfer',
+    'OVERFØRING': 'Transfer',
+    'SPAREKONTO': 'Transfer',
+    'TIL HÅVARD RÅHEIM ØKLAND': 'Transfer',
+    'TIL HÅVARD ØKLAND': 'Transfer',
+    'TIL MIE KREYBU': 'Transfer',
+    'TIL TRUMF': 'Transfer',
+    'TIL:': 'Transfer',
+
+    # --- Transport ---
+    'ESSO': 'Transport',
+    'PARKERING': 'Transport',
+
+    # --- Travel ---
+    'BOM': 'Travel',
+    'FLYTOGET': 'Travel',
+    'KOLUMBUS': 'Travel',
+    'NORWEGIAN': 'Travel',
+    'RUTER': 'Travel',
+    'RYDE': 'Travel',
+    'SAS': 'Travel',
+    'SKYSS': 'Travel',
+    'VOI': 'Travel',
+    'VY': 'Travel',
+    'WIDEROE': 'Travel',
+
+    # --- Utilities ---
+    'FJORDKRAFT': 'Utilities',
+    'LYSE TELE': 'Utilities',
+    'STRØM': 'Utilities',
+    'TELENOR': 'Utilities',
+
+    # --- Vipps (Unsorted) ---
+    'VIPPS': 'Vipps (Unsorted)',
+}
 # --- EXPENSE TYPES MAPPING ---
 # This maps your Categories to "Fixed" (Must haves) or "Variable" (Nice to haves)
 EXPENSE_TYPES = {
@@ -132,19 +164,21 @@ EXPENSE_TYPES = {
     'Rent': 'Fixed',
     'Mortgage': 'Fixed',
     'Utilities': 'Fixed',
-    'INSURANCE': 'Fixed',      # Added
+    'Insurance': 'Fixed',      # Added
     'Subscriptions': 'Fixed',  # Renamed from Entertainment
     'Saving': 'Fixed',         # Treating saving as a fixed obligation
     
     # Variable Expenses (Lifestyle / One-off)
     'Groceries': 'Variable',
-    'Transport': 'Variable',
     'Travel': 'Variable',      # Added
     'Dining/Drinks': 'Variable', # Renamed from Dining Out
     'Shopping': 'Variable',
     'Electronics': 'Variable',
     'Furniture & Appliances': 'Variable', # Added
     'Vipps (Unsorted)': 'Variable',
+    'Gifts': 'Variable',
+    'Car': 'Variable',
+    'Recreation & Well Beeing': 'Variable',
 
     # NEW: Add Misc here
     'Misc': 'Variable',

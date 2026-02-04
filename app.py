@@ -3,13 +3,10 @@ import pandas as pd
 import plotly.express as px
 from data_processor import process_files
 import database
-# We still need categories.py for the INITIAL seed and the Expense Types mapping
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="Finance Dashboard", page_icon="💰", layout="wide")
-
-# Initialize DB and Seed Rules if new
 database.init_db()
 database.seed_rules_if_empty(CATEGORY_RULES)
 
@@ -50,10 +47,11 @@ with st.sidebar:
     st.caption("MAIN MENU")
     
     cat_label = f"🔍 Categorization ({uncat_count})" if uncat_count > 0 else "🔍 Categorization"
+    
+    # REMOVED "Fixed vs Variable" from the menu
     nav_options = {
         "📊 Monthly Dashboard": "dashboard",
         "📈 Long-term Trends": "trends",
-        "⚖️ Fixed vs Variable": "fixed_var",
         cat_label: "categorization"
     }
     selection = st.radio("Navigate", list(nav_options.keys()), label_visibility="collapsed", key="main_nav")
@@ -97,18 +95,16 @@ df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable')
 # ==========================================
 if page == "categorization":
     st.header("🔍 Categorization Center")
-    
-    # We use Tabs to separate "Fixing" from "Teaching"
     tab1, tab2 = st.tabs(["📝 Review Transactions", "🧠 Manage Rules"])
     
-    # --- TAB 1: REVIEW ---
     with tab1:
         uncategorized_df = df[df['Category'] == 'Uncategorized'].copy()
         if uncategorized_df.empty:
             st.success("🎉 No uncategorized transactions!")
         else:
             st.info(f"Reviewing {len(uncategorized_df)} items.")
-            valid_categories = sorted(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])
+            # Use set() to remove duplicates
+            valid_categories = sorted(list(set(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])))
             
             edited_df = st.data_editor(
                 uncategorized_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
@@ -132,61 +128,67 @@ if page == "categorization":
                     st.toast(f"✅ Updated {changes_count} items!", icon="💾")
                     st.rerun()
 
-    # --- TAB 2: RULE MANAGER (NEW!) ---
     with tab2:
         st.subheader("Teach the App")
-        st.markdown("Add keywords here so the app learns automatically for next time.")
-        
-        # 1. Add New Rule
         c1, c2, c3 = st.columns([2, 2, 1])
-        with c1:
-            new_keyword = st.text_input("If description contains:", placeholder="e.g. NETFLIX")
-        with c2:
-            new_category = st.selectbox("Then categorize as:", sorted(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer']))
+        with c1: new_keyword = st.text_input("If description contains:", placeholder="e.g. NETFLIX")
+        with c2: new_category = st.selectbox("Then categorize as:", sorted(list(set(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer']))))
         with c3:
-            st.write("") # Spacer
             st.write("") 
-            if st.button("➕ Add Rule"):
-                if new_keyword:
-                    database.add_rule(new_keyword, new_category)
-                    st.success(f"Added rule: {new_keyword} -> {new_category}")
-                    st.rerun()
+            st.write("") 
+            if st.button("➕ Add Rule") and new_keyword:
+                database.add_rule(new_keyword, new_category)
+                st.success(f"Added: {new_keyword}")
+                st.rerun()
         
         st.divider()
-        
-        # 2. View/Delete Existing Rules
-        st.subheader("Existing Rules")
-        current_rules = database.load_rules_from_db()
-        
-        # Convert to DF for display
-        rules_df = pd.DataFrame(list(current_rules.items()), columns=['Keyword', 'Category'])
-        rules_df = rules_df.sort_values(by='Keyword')
-        
-        # We allow deleting rules via a dataframe with a checkbox
+        rules_df = pd.DataFrame(list(database.load_rules_from_db().items()), columns=['Keyword', 'Category']).sort_values('Keyword')
         rules_df['Delete'] = False
-        
-        edited_rules = st.data_editor(
-            rules_df,
-            column_config={
-                "Keyword": st.column_config.TextColumn(disabled=True),
-                "Category": st.column_config.TextColumn(disabled=True),
-                "Delete": st.column_config.CheckboxColumn("Delete?", default=False)
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-        
-        # Check if deletions happened
+        edited_rules = st.data_editor(rules_df, column_config={"Keyword": st.column_config.TextColumn(disabled=True), "Category": st.column_config.TextColumn(disabled=True)}, hide_index=True, use_container_width=True)
         to_delete = edited_rules[edited_rules['Delete'] == True]
         if not to_delete.empty:
             if st.button(f"🗑️ Delete {len(to_delete)} Rules"):
-                for keyword in to_delete['Keyword']:
-                    database.delete_rule(keyword)
+                for k in to_delete['Keyword']: database.delete_rule(k)
                 st.rerun()
+        if not to_delete.empty:
+            if st.button(f"🗑️ Delete {len(to_delete)} Rules"):
+                for k in to_delete['Keyword']: database.delete_rule(k)
+                st.rerun()
+
+        # --- NEW CODE STARTS HERE ---
+        st.markdown("---")
+        st.subheader("📤 Export for categories.py")
+        st.caption("Copy this code and replace the CATEGORY_RULES dictionary in your categories.py file.")
+        
+        # 1. Load current live rules
+        current_rules = database.load_rules_from_db()
+        
+        # 2. Sort by Category first (item[1]), then by Keyword (item[0])
+        # This groups all "Groceries" together, then all "Income" together, etc.
+        sorted_items = sorted(current_rules.items(), key=lambda item: (item[1], item[0]))
+        
+        # 3. Build the string
+        dict_str = "CATEGORY_RULES = {\n"
+        
+        # We can also add comments to separate the groups visually
+        current_category = ""
+        for keyword, category in sorted_items:
+            # Optional: Add a comment header when the category changes
+            if category != current_category:
+                dict_str += f"\n    # --- {category} ---\n"
+                current_category = category
+            
+            dict_str += f"    '{keyword}': '{category}',\n"
+            
+        dict_str += "}"
+        
+        # 4. Display
+        st.code(dict_str, language='python')
+
 
 
 # ==========================================
-#      VIEW: DASHBOARD (Standard)
+#      VIEW: MONTHLY DASHBOARD
 # ==========================================
 elif page == "dashboard":
     st.header("📊 Monthly Snapshot")
@@ -198,7 +200,10 @@ elif page == "dashboard":
     # Metrics
     inc = view_df[(view_df['Amount'] > 0) & (view_df['Category'] == 'Income')]['Amount'].sum()
     exp_mask = (view_df['Amount'] < 0) & (view_df['Category'] != 'Transfer') & (view_df['Category'] != 'Income')
-    exp = view_df[exp_mask]['Amount'].abs().sum()
+    expenses_df = view_df[exp_mask].copy()
+    expenses_df['Abs_Amount'] = expenses_df['Amount'].abs()
+    
+    exp = expenses_df['Abs_Amount'].sum()
     sav = inc - exp
     rate = (sav / inc * 100) if inc > 0 else 0
 
@@ -210,28 +215,63 @@ elif page == "dashboard":
     m4.metric("Rate", f"{rate:.1f}%")
     st.divider()
     
+    # 1. Main Spending Pie & Top Expenses
     c1, c2 = st.columns([1, 1])
     with c1:
-        st.subheader("Spending")
-        exp_df = view_df[exp_mask].copy()
-        exp_df['Abs_Amount'] = exp_df['Amount'].abs()
-        if not exp_df.empty:
-            fig = px.pie(exp_df, values='Abs_Amount', names='Category', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+        st.subheader("Spending Breakdown")
+        if not expenses_df.empty:
+            fig = px.pie(expenses_df, values='Abs_Amount', names='Category', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No expenses data.")
+            
     with c2:
-        st.subheader("Details")
-        if not exp_df.empty:
-            st.dataframe(exp_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(10), use_container_width=True, hide_index=True)
+        st.subheader("Top Expenses")
+        if not expenses_df.empty:
+            st.dataframe(expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(10).style.format({'Amount': "{:.0f}"}), use_container_width=True, hide_index=True)
+
+    with st.expander("📄 View All Transactions"):
+        st.dataframe(view_df[['Date', 'Description', 'Category', 'Amount']].sort_values(by='Date', ascending=False), use_container_width=True)
+
+    # --- INTEGRATED FIXED VS VARIABLE SECTION ---
+    st.divider()
+    st.subheader("⚖️ Fixed vs Variable (Monthly Analysis)")
+    
+    if not expenses_df.empty:
+        # Calculate stats for the VIEWED period
+        type_sum = expenses_df.groupby("Type_Tag")["Abs_Amount"].sum().reset_index()
+        total_period = type_sum['Abs_Amount'].sum()
+        
+        # Safe getters for Fixed/Variable sums
+        fixed_row = type_sum[type_sum['Type_Tag']=='Fixed']
+        fixed_amt = fixed_row['Abs_Amount'].sum() if not fixed_row.empty else 0
+        
+        var_row = type_sum[type_sum['Type_Tag']=='Variable']
+        var_amt = var_row['Abs_Amount'].sum() if not var_row.empty else 0
+        
+        fv_c1, fv_c2 = st.columns([1, 1])
+        with fv_c1:
+            fig_fv = px.pie(type_sum, values='Abs_Amount', names='Type_Tag', 
+                            color='Type_Tag', 
+                            color_discrete_map={'Fixed': '#636EFA', 'Variable': '#EF553B'},
+                            title="Structure")
+            st.plotly_chart(fig_fv, use_container_width=True)
+            
+        with fv_c2:
+            st.markdown("### Breakdown")
+            st.metric("Fixed Costs (Needs)", f"{fixed_amt:,.0f} NOK", f"{(fixed_amt/total_period*100):.1f}%")
+            st.metric("Variable Costs (Wants)", f"{var_amt:,.0f} NOK", f"{(var_amt/total_period*100):.1f}%")
+            st.info("💡 **Target:** Fixed costs should ideally be < 50% of your income.")
 
 # ==========================================
-#      VIEW: TRENDS
+#      VIEW: LONG TERM TRENDS
 # ==========================================
 elif page == "trends":
     st.header("📈 Financial History")
     hist_df = df.copy()
     hist_df['Month'] = hist_df['Date'].dt.strftime('%Y-%m')
     
-    # Bar Chart
+    # 1. Income vs Expenses
     summ = []
     for m in sorted(hist_df['Month'].unique()):
         x = hist_df[hist_df['Month']==m]
@@ -243,28 +283,23 @@ elif page == "trends":
     st.subheader("Income vs Expenses")
     st.plotly_chart(px.bar(pd.DataFrame(summ), x='Month', y='Amount', color='Type', barmode='group', color_discrete_map={'Income': '#00CC96', 'Expenses': '#EF553B'}), use_container_width=True)
     
-    # Line Chart
+    # 2. Category Line Chart
+    st.divider()
     st.subheader("Category Trends")
     et = hist_df[(hist_df['Amount']<0)&(hist_df['Category']!='Transfer')&(hist_df['Category']!='Income')].copy()
     et['Abs_Amount'] = et['Amount'].abs()
     line_data = et.groupby(['Month','Category'])['Abs_Amount'].sum().reset_index()
     st.plotly_chart(px.line(line_data, x='Month', y='Abs_Amount', color='Category', markers=True, color_discrete_sequence=px.colors.qualitative.Pastel), use_container_width=True)
 
-# ==========================================
-#      VIEW: FIXED VS VARIABLE
-# ==========================================
-elif page == "fixed_var":
-    st.header("⚖️ Fixed vs Variable")
-    e = df[(df['Amount']<0)&(df['Category']!='Transfer')&(df['Category']!='Income')].copy()
-    e['Abs_Amount'] = e['Amount'].abs()
+    # --- INTEGRATED FIXED VS VARIABLE HISTORY ---
+    st.divider()
+    st.subheader("⚖️ Lifestyle Inflation (Fixed vs Variable over time)")
     
-    if not e.empty:
-        c1, c2 = st.columns(2)
-        grp = e.groupby('Type_Tag')['Abs_Amount'].sum().reset_index()
-        with c1: st.plotly_chart(px.pie(grp, values='Abs_Amount', names='Type_Tag', color='Type_Tag', color_discrete_map={'Fixed':'#636EFA','Variable':'#EF553B'}), use_container_width=True)
-        with c2:
-            t = grp['Abs_Amount'].sum()
-            f = grp[grp['Type_Tag']=='Fixed']['Abs_Amount'].sum()
-            v = grp[grp['Type_Tag']=='Variable']['Abs_Amount'].sum()
-            st.metric("Fixed", f"{f:,.0f}", f"{f/t*100:.1f}%")
-            st.metric("Variable", f"{v:,.0f}", f"{v/t*100:.1f}%")
+    # Reuse 'et' dataframe (Expenses Only)
+    monthly_type = et.groupby(['Month', 'Type_Tag'])['Abs_Amount'].sum().reset_index()
+    
+    fig_bar = px.bar(monthly_type, x='Month', y='Abs_Amount', color='Type_Tag', 
+                     barmode='stack', 
+                     title="Are your fixed costs growing?",
+                     color_discrete_map={'Fixed': '#636EFA', 'Variable': '#EF553B'})
+    st.plotly_chart(fig_bar, use_container_width=True)
