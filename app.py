@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime
 from data_processor import process_files
 import database
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
@@ -233,9 +234,34 @@ if page == "categorization":
 # ==========================================
 elif page == "dashboard":
     st.header("📊 Monthly Snapshot")
+    # 1. Get available months
+    # (Assumes df['Month_Year'] exists as per your snippet)
     available_months = sorted(df['Month_Year'].unique().astype(str), reverse=True)
+    
+    # 2. Set up Options and Default Selection
+    options = ["All Time"] + available_months
+    current_month_str = datetime.now().strftime('%Y-%m')
+    
+    # Determine which index to select by default
+    if current_month_str in options:
+        default_index = options.index(current_month_str)
+    elif len(available_months) > 0:
+        # If current month is missing, default to the latest available month (Index 1, after "All Time")
+        default_index = 1
+    else:
+        default_index = 0
+
     col_sel, _ = st.columns([1, 4])
-    with col_sel: selected_month = st.selectbox("Select Month", ["All Time"] + available_months)
+    with col_sel: 
+        selected_month = st.selectbox(
+            "Select Month", 
+            options, 
+            index=default_index,
+            # This makes "2026-02" look like "February 2026"
+            format_func=lambda x: "All Time" if x == "All Time" else datetime.strptime(x, '%Y-%m').strftime('%B %Y')
+        )
+
+    # 3. Filter the dataframe
     view_df = df[df['Month_Year'].astype(str) == selected_month].copy() if selected_month != "All Time" else df.copy()
 
     # Metrics
