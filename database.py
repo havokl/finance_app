@@ -144,6 +144,21 @@ def update_transaction_category(transaction_id, new_category):
     finally:
         conn.close()
 
+# ... inside database.py
+
+def update_transaction_amount(transaction_id, new_amount):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE transactions SET amount = ? WHERE id = ?", (new_amount, transaction_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating amount: {e}")
+        return False
+    finally:
+        conn.close()
+
 def clear_database():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()

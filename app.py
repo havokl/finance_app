@@ -97,36 +97,77 @@ if page == "categorization":
     st.header("🔍 Categorization Center")
     tab1, tab2 = st.tabs(["📝 Review Transactions", "🧠 Manage Rules"])
     
+    # ... inside app.py (inside the 'categorization' page block)
+
     with tab1:
-        uncategorized_df = df[df['Category'] == 'Uncategorized'].copy()
-        if uncategorized_df.empty:
-            st.success("🎉 No uncategorized transactions!")
+        # 1. Allow toggling between "Uncategorized Only" and "All Transactions"
+        col_filter, _ = st.columns([1, 3])
+        with col_filter:
+            show_all = st.toggle("Show all transactions", value=False)
+        
+        # 2. Filter the dataframe based on toggle
+        if show_all:
+            display_df = df.copy() # Edit anything
+            st.info(f"Showing all {len(display_df)} transactions.")
         else:
-            st.info(f"Reviewing {len(uncategorized_df)} items.")
-            # Use set() to remove duplicates
+            display_df = df[df['Category'] == 'Uncategorized'].copy() # Standard workflow
+            if display_df.empty:
+                st.success("🎉 No uncategorized transactions!")
+            else:
+                st.info(f"Reviewing {len(display_df)} items.")
+
+        if not display_df.empty:
             valid_categories = sorted(list(set(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])))
             
+            # 3. Configure Editor: Enable Amount editing
             edited_df = st.data_editor(
-                uncategorized_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
+                display_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
                 column_config={
                     "Category": st.column_config.SelectboxColumn("Assign", options=valid_categories, required=True),
-                    "id": None,
+                    "id": None, # Hidden
                     "Date": st.column_config.DatetimeColumn(disabled=True, format="D MMM"),
                     "Description": st.column_config.TextColumn(disabled=True),
-                    "Amount": st.column_config.NumberColumn(disabled=True, format="%.0f")
+                    # CHANGE: Set disabled=False so you can edit amounts
+                    "Amount": st.column_config.NumberColumn(label="Amount", disabled=False, format="%.0f", required=True)
                 },
-                hide_index=True, use_container_width=True, num_rows="fixed"
+                hide_index=True, 
+                use_container_width=True, 
+                num_rows="fixed",
+                key="editor_cat"
             )
             
+            # 4. Save Logic: Detect Category OR Amount changes
             if st.button("💾 Save Changes", type="primary"):
                 changes_count = 0
+                
+                # We iterate through the EDITED dataframe
                 for index, row in edited_df.iterrows():
-                    if row['Category'] != 'Uncategorized':
-                        if database.update_transaction_category(row['id'], row['Category']):
-                            changes_count += 1
+                    trans_id = row['id']
+                    
+                    # Find the ORIGINAL row in the main dataframe to compare values
+                    # (We use safe indexing in case the ID is somehow missing, though unlikely)
+                    original_rows = df[df['id'] == trans_id]
+                    
+                    if not original_rows.empty:
+                        original_row = original_rows.iloc[0]
+                        
+                        # Check 1: Did Category Change?
+                        if row['Category'] != original_row['Category']:
+                            # Only update if it's not 'Uncategorized' (force user to choose a real category)
+                            if row['Category'] != 'Uncategorized':
+                                if database.update_transaction_category(trans_id, row['Category']):
+                                    changes_count += 1
+
+                        # Check 2: Did Amount Change? (Float comparison with small tolerance)
+                        if abs(row['Amount'] - original_row['Amount']) > 0.01:
+                            if database.update_transaction_amount(trans_id, row['Amount']):
+                                changes_count += 1
+                
                 if changes_count > 0:
                     st.toast(f"✅ Updated {changes_count} items!", icon="💾")
                     st.rerun()
+                else:
+                    st.info("No changes detected.")
 
     with tab2:
         st.subheader("Teach the App")
