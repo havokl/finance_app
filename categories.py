@@ -18,6 +18,7 @@ CATEGORY_RULES = {
     '7-ELEVEN': 'Dining/Drinks',
     '7ELEVEN': 'Dining/Drinks',
     'BAKER': 'Dining/Drinks',
+    'BEVERLY HILLS FUN PUB STA': 'Dining/Drinks',
     'BGO POINT DOM': 'Dining/Drinks',
     'BRIAN BORU': 'Dining/Drinks',
     'BURGER': 'Dining/Drinks',
@@ -25,16 +26,28 @@ CATEGORY_RULES = {
     'DOMINOS': 'Dining/Drinks',
     'FELIX BERGEN': 'Dining/Drinks',
     'FINNEGAARDEN HOTELL': 'Dining/Drinks',
+    'FJORD1 FERDAMAT': 'Dining/Drinks',
+    'FOODORA NORWAY': 'Dining/Drinks',
     'GARNES PIZZA OG GRILL': 'Dining/Drinks',
+    'HEKKAN': 'Dining/Drinks',
     'ISS AVD 460095 DNB SM 55': 'Dining/Drinks',
     'KVAERNER STORD ADMIN': 'Dining/Drinks',
+    'LOS TACOS': 'Dining/Drinks',
     'MAGDA': 'Dining/Drinks',
+    'MCDARKEN': 'Dining/Drinks',
     'MCDBRYGGESPOREN': 'Dining/Drinks',
     'MCDONALDS': 'Dining/Drinks',
+    'MCDRADALEN': 'Dining/Drinks',
+    'MCDSTORD': 'Dining/Drinks',
     'NARVESEN': 'Dining/Drinks',
+    'NO STRESS': 'Dining/Drinks',
+    'OLD IRISH PUB STAVANGER': 'Dining/Drinks',
     'RESTAURANT': 'Dining/Drinks',
+    'ST1 LONE': 'Dining/Drinks',
     'STARBUCKS': 'Dining/Drinks',
+    'STORHAUG PIZZA AS': 'Dining/Drinks',
     'TEMPO TEMPO': 'Dining/Drinks',
+    'WAVE': 'Dining/Drinks',
     'ZETTLE_*KUNG KUNG THAI TA': 'Dining/Drinks',
 
     # --- Electronics ---
@@ -44,14 +57,17 @@ CATEGORY_RULES = {
     'POWER': 'Electronics',
 
     # --- Furniture & Appliances ---
+    'CLAS OHL 835': 'Furniture & Appliances',
     'EUROPRIS': 'Furniture & Appliances',
     'IKEA': 'Furniture & Appliances',
     'JERNIA': 'Furniture & Appliances',
     'JULA NORGE': 'Furniture & Appliances',
+    'MEGAFLIS': 'Furniture & Appliances',
     'VEST MARKISE': 'Furniture & Appliances',
 
     # --- Gifts ---
     'BLINDEFORBUNDET': 'Gifts',
+    'SAREPTA BLOMSTE': 'Gifts',
 
     # --- Groceries ---
     'BUNNPRIS': 'Groceries',
@@ -62,6 +78,7 @@ CATEGORY_RULES = {
     'MATKROKEN': 'Groceries',
     'MENY': 'Groceries',
     'REMA': 'Groceries',
+    'SPAR LONE': 'Groceries',
 
     # --- Income ---
     'AKER BP': 'Income',
@@ -81,6 +98,8 @@ CATEGORY_RULES = {
     'LÅN': 'Mortgage',
 
     # --- Recreation & Well Beeing ---
+    'CUT N GO': 'Recreation & Well Beeing',
+    'CUTTERS': 'Recreation & Well Beeing',
     'KINO': 'Recreation & Well Beeing',
 
     # --- Rent ---
@@ -94,13 +113,20 @@ CATEGORY_RULES = {
     # --- Shopping ---
     'AVARDA*OUTNORTH': 'Shopping',
     'BERGANS OF NORWAY': 'Shopping',
+    'BILTEMA': 'Shopping',
     'BODYLAB.NO': 'Shopping',
+    'CLAS OHL 2847': 'Shopping',
     'EAST WEST': 'Shopping',
     'GJENBRUKEN BERGEN': 'Shopping',
     'H&M': 'Shopping',
+    'HOEYER': 'Shopping',
+    'JANUSFABRIKKEN': 'Shopping',
     'LINK BRANDS': 'Shopping',
     'NORMAL': 'Shopping',
+    'SPORT 1': 'Shopping',
     'SPORT OUTLET': 'Shopping',
+    'THANSEN BERGEN AASANE': 'Shopping',
+    'THANSEN.NO': 'Shopping',
     'VOLT': 'Shopping',
     'XXL NOR': 'Shopping',
     'ZALANDO': 'Shopping',
@@ -108,6 +134,7 @@ CATEGORY_RULES = {
     # --- Subscriptions ---
     'BONNIER PUBLICATIO': 'Subscriptions',
     'DISNEY PLUS': 'Subscriptions',
+    'EVOFITNESS': 'Subscriptions',
     'HBO': 'Subscriptions',
     'MEDLEMSAVGIFT': 'Subscriptions',
     'MICROSOFT 365': 'Subscriptions',
