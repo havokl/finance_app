@@ -1,6 +1,8 @@
 import sqlite3
 import pandas as pd
 import hashlib
+import shutil
+import os
 
 DB_NAME = "finance.db"
 
@@ -166,3 +168,20 @@ def clear_database():
     # Note: We do NOT delete the rules table here, or you lose your config!
     conn.commit()
     conn.close()
+
+    # --- Add to the bottom of database.py ---
+
+
+def get_db_path():
+    """Returns the path to the current database file."""
+    return DB_NAME
+
+def restore_db(uploaded_file):
+    """Overwrites the current database with the uploaded file."""
+    try:
+        with open(DB_NAME, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        return True
+    except Exception as e:
+        print(f"Error restoring DB: {e}")
+        return False

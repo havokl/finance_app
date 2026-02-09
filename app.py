@@ -3,8 +3,27 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 from data_processor import process_files
+from streamlit_option_menu import option_menu
 import database
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
+
+
+CATEGORY_COLORS = {
+    "Groceries": "#AED581",  # Light Green
+    "Dining/Drinks": "#FF8A65", # Soft Orange
+    "Rent": "#64B5F6", # Soft Blue
+    "Mortgage": "#42A5F5", # Darker Blue
+    "Utilities": "#FFD54F", # Amber
+    "Travel": "#4DB6AC", # Teal
+    "Shopping": "#BA68C8", # Light Purple
+    "Car": "#90A4AE", # Blue Grey
+    "Insurance": "#E57373", # Light Red
+    "Subscriptions": "#9575CD", # Deep Purple
+    "Saving": "#81C784", # Green
+    "Income": "#66BB6A", 
+    "Transfer": "#E0E0E0",
+    "Uncategorized": "#E0E0E0"
+}
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="Finance Dashboard", page_icon="💰", layout="wide")
@@ -34,6 +53,13 @@ st.markdown("""
         color: #1967d2;
         font-weight: bold;
     }
+    [data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -42,25 +68,39 @@ df = database.load_all_transactions()
 uncat_count = len(df[df['Category'] == 'Uncategorized']) if not df.empty else 0
 
 # --- 3. SIDEBAR ---
+# --- 3. SIDEBAR & MENU ---
 with st.sidebar:
-    st.title("💰 Finance App")
-    st.markdown("---")
-    st.caption("MAIN MENU")
+    st.title("Finance App")
     
-    cat_label = f"🔍 Categorization ({uncat_count})" if uncat_count > 0 else "🔍 Categorization"
+    selected = option_menu(
+        menu_title=None, 
+        options=["Dashboard", "Trends", "Categorize"], 
+        icons=["speedometer2", "graph-up-arrow", "check-circle"], 
+        menu_icon="cast", 
+        default_index=0,
+        # --- NEW STYLING BLOCK ---
+        styles={
+            "container": {"padding": "0!important", "background-color": "#fafafa"},
+            "icon": {"color": "#0b0b0b", "font-size": "16px"}, 
+            "nav-link": {
+                "font-size": "16px", 
+                "text-align": "left", 
+                "margin": "0px", 
+                "--hover-color": "#eee"
+            },
+            "nav-link-selected": {
+            "background-color": "#dae3edf6",
+            "font-weight": "normal",  
+        },
+        }
+    )
+
+    page_map = {"Dashboard": "dashboard", "Trends": "trends", "Categorize": "categorization"}
+    page = page_map[selected]
+
+    st.divider()
     
-    # REMOVED "Fixed vs Variable" from the menu
-    nav_options = {
-        "📊 Monthly Dashboard": "dashboard",
-        "📈 Long-term Trends": "trends",
-        cat_label: "categorization"
-    }
-    selection = st.radio("Navigate", list(nav_options.keys()), label_visibility="collapsed", key="main_nav")
-    page = nav_options[selection]
-    
-    st.markdown("---")
-    st.caption("DATA MANAGEMENT")
-    uploaded_files = st.file_uploader("Upload CSVs", type='csv', accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload Bank CSVs", accept_multiple_files=True)
     
     if uploaded_files:
         if st.button("Process & Save", type="primary", use_container_width=True):
@@ -75,6 +115,37 @@ with st.sidebar:
                         st.warning("⚠️ No new data.")
                 else:
                     st.error("Could not process.")
+    # ... (After your existing file_uploader code) ...
+
+    st.divider()
+    
+    # --- DATA MANAGEMENT (Backup/Restore) ---
+    with st.expander("💾 Data Management"):
+        st.caption("Backup your categorized data or restore a previous version.")
+        
+        # 1. DOWNLOAD (Backup)
+        with open("finance.db", "rb") as fp:
+            btn = st.download_button(
+                label="Download Backup",
+                data=fp,
+                file_name=f"finance_backup_{datetime.now().strftime('%Y%m%d')}.db",
+                mime="application/x-sqlite3",
+                help="Click to save a copy of your database to your computer."
+            )
+        
+        st.markdown("---")
+        
+        # 2. UPLOAD (Restore)
+        restore_file = st.file_uploader("Restore Backup", type=["db"], key="restore_uploader")
+        
+        if restore_file:
+            # Add a confirmation button to prevent accidental overwrites
+            if st.button("⚠️ Confirm Restore"):
+                if database.restore_db(restore_file):
+                    st.success("Database restored successfully!")
+                    st.rerun() # Force a reload to show the restored data
+                else:
+                    st.error("Failed to restore database.")
     
     st.markdown("---")
     with st.expander("⚙️ Settings"):
@@ -101,6 +172,18 @@ if page == "categorization":
     # ... inside app.py (inside the 'categorization' page block)
 
     with tab1:
+        # Calculate progress
+        total_tx = len(df)
+        uncat_tx = len(df[df['Category'] == 'Uncategorized'])
+        progress = int(((total_tx - uncat_tx) / total_tx) * 100) if total_tx > 0 else 100
+    
+        if uncat_tx > 0:
+            st.warning(f"🚨 {uncat_tx} transactions need your attention!")
+            st.progress(progress, text=f"Categorization Progress: {progress}%")
+        else:
+            st.balloons()
+            st.success("🎉 All caught up! Great job.")
+
         # 1. Allow toggling between "Uncategorized Only" and "All Transactions"
         col_filter, _ = st.columns([1, 3])
         with col_filter:
@@ -230,12 +313,16 @@ if page == "categorization":
 
 
 # ==========================================
-#      VIEW: MONTHLY DASHBOARD
+#       VIEW: MONTHLY DASHBOARD
 # ==========================================
 elif page == "dashboard":
     st.header("📊 Monthly Snapshot")
+    
     # 1. Get available months
-    # (Assumes df['Month_Year'] exists as per your snippet)
+    # Ensure Month_Year exists
+    if 'Month_Year' not in df.columns and not df.empty:
+        df['Month_Year'] = df['Date'].dt.to_period('M').astype(str)
+
     available_months = sorted(df['Month_Year'].unique().astype(str), reverse=True)
     
     # 2. Set up Options and Default Selection
@@ -246,8 +333,7 @@ elif page == "dashboard":
     if current_month_str in options:
         default_index = options.index(current_month_str)
     elif len(available_months) > 0:
-        # If current month is missing, default to the latest available month (Index 1, after "All Time")
-        default_index = 1
+        default_index = 1 # Default to latest available if current is missing
     else:
         default_index = 0
 
@@ -257,15 +343,36 @@ elif page == "dashboard":
             "Select Month", 
             options, 
             index=default_index,
-            # This makes "2026-02" look like "February 2026"
             format_func=lambda x: "All Time" if x == "All Time" else datetime.strptime(x, '%Y-%m').strftime('%B %Y')
         )
 
-    # 3. Filter the dataframe
-    view_df = df[df['Month_Year'].astype(str) == selected_month].copy() if selected_month != "All Time" else df.copy()
+    # 3. FILTER DATA (Current vs Previous)
+    
+    # A. Current Selection Data
+    if selected_month == "All Time":
+        view_df = df.copy()
+        prev_df = pd.DataFrame() # No comparison for All Time
+    else:
+        view_df = df[df['Month_Year'].astype(str) == selected_month].copy()
+        
+        # B. Calculate Previous Month String
+        sel_date = datetime.strptime(selected_month, "%Y-%m")
+        # Go back one month
+        if sel_date.month == 1:
+            prev_month = 12
+            prev_year = sel_date.year - 1
+        else:
+            prev_month = sel_date.month - 1
+            prev_year = sel_date.year
+            
+        prev_month_str = f"{prev_year}-{prev_month:02d}"
+        
+        # C. Previous Month Data
+        prev_df = df[df['Month_Year'].astype(str) == prev_month_str].copy()
 
-    # Metrics
+    # 4. CALCULATE METRICS (Current)
     inc = view_df[(view_df['Amount'] > 0) & (view_df['Category'] == 'Income')]['Amount'].sum()
+    
     exp_mask = (view_df['Amount'] < 0) & (view_df['Category'] != 'Transfer') & (view_df['Category'] != 'Income')
     expenses_df = view_df[exp_mask].copy()
     expenses_df['Abs_Amount'] = expenses_df['Amount'].abs()
@@ -274,31 +381,75 @@ elif page == "dashboard":
     sav = inc - exp
     rate = (sav / inc * 100) if inc > 0 else 0
 
-    st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Income", f"{inc:,.0f}")
-    m2.metric("Expenses", f"{exp:,.0f}")
-    m3.metric("Savings", f"{sav:,.0f}")
-    m4.metric("Rate", f"{rate:.1f}%")
-    st.divider()
-    
-    # 1. Main Spending Pie & Top Expenses
-    c1, c2 = st.columns([1, 1])
+    # 5. CALCULATE METRICS (Previous)
+    if not prev_df.empty:
+        prev_inc = prev_df[(prev_df['Amount'] > 0) & (prev_df['Category'] == 'Income')]['Amount'].sum()
+        
+        prev_exp_mask = (prev_df['Amount'] < 0) & (prev_df['Category'] != 'Transfer') & (prev_df['Category'] != 'Income')
+        prev_exp = prev_df[prev_exp_mask]['Amount'].abs().sum()
+        
+        prev_sav = prev_inc - prev_exp
+        
+        # Deltas
+        inc_delta = inc - prev_inc
+        exp_delta = exp - prev_exp 
+        sav_delta = sav - prev_sav
+    else:
+        # If "All Time" or no previous data, deltas are 0
+        inc_delta, exp_delta, sav_delta = 0, 0, 0
+
+    # 6. DISPLAY METRICS ROW (Bento Box Style)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: 
+        st.metric("Income", f"{inc:,.0f} kr", delta=f"{inc_delta:,.0f} kr", delta_color="normal")
+    with col2: 
+        # Note: If exp_delta is Positive (e.g. 5000), it means we spent 5000 MORE. 
+        # Standard delta_color="inverse" turns Positive Red (Bad) and Negative Green (Good).
+        st.metric("Expenses", f"{exp:,.0f} kr", delta=f"{exp_delta:,.0f} kr", delta_color="inverse")
+    with col3: 
+        st.metric("Savings", f"{sav:,.0f} kr", delta=f"{sav_delta:,.0f} kr", delta_color="normal")
+    with col4: 
+        burn_rate = (exp/inc*100) if inc > 0 else 0
+        st.metric("Burn Rate", f"{burn_rate:.0f}%", help="Target < 70%")
+
+    st.markdown("---")
+
+    # 7. CHARTS ROW (2:1 Ratio)
+    c1, c2 = st.columns([2, 1])
+
     with c1:
-        st.subheader("Spending Breakdown")
+        st.subheader("Spending Structure")
         if not expenses_df.empty:
-            fig = px.pie(expenses_df, values='Abs_Amount', names='Category', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+            # Donut Chart with Consistent Colors
+            fig = px.pie(expenses_df, values='Abs_Amount', names='Category', 
+                         hole=0.5, 
+                         color='Category',
+                         color_discrete_map=CATEGORY_COLORS) # Uses the map from Step 1
+            
+            # Label cleanup
+            fig.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
+            
+            fig.update_layout(height=350, margin=dict(t=20, b=20, l=20, r=20))
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("No expenses data.")
-            
+            st.info("No expenses found.")
+
     with c2:
         st.subheader("Top Expenses")
         if not expenses_df.empty:
-            st.dataframe(expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(10).style.format({'Amount': "{:.0f}"}), use_container_width=True, hide_index=True)
-
-    with st.expander("📄 View All Transactions"):
-        st.dataframe(view_df[['Date', 'Description', 'Category', 'Amount']].sort_values(by='Date', ascending=False), use_container_width=True)
+            # Clean Table View
+            top_exp = expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(5)
+            st.dataframe(
+                top_exp, 
+                column_config={
+                    "Amount": st.column_config.NumberColumn(format="kr %.0f"),
+                    "Description": st.column_config.TextColumn(width="medium"),
+                },
+                hide_index=True, 
+                use_container_width=True
+            )
+        else:
+            st.info("No data.")
 
     # --- INTEGRATED FIXED VS VARIABLE SECTION ---
     st.divider()
@@ -322,6 +473,8 @@ elif page == "dashboard":
                             color='Type_Tag', 
                             color_discrete_map={'Fixed': '#636EFA', 'Variable': '#EF553B'},
                             title="Structure")
+            # Label cleanup
+            fig_fv.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
             st.plotly_chart(fig_fv, use_container_width=True)
             
         with fv_c2:
@@ -329,6 +482,7 @@ elif page == "dashboard":
             st.metric("Fixed Costs (Needs)", f"{fixed_amt:,.0f} NOK", f"{(fixed_amt/total_period*100):.1f}%")
             st.metric("Variable Costs (Wants)", f"{var_amt:,.0f} NOK", f"{(var_amt/total_period*100):.1f}%")
             st.info("💡 **Target:** Fixed costs should ideally be < 50% of your income.")
+
 
 # ==========================================
 #      VIEW: LONG TERM TRENDS
@@ -350,23 +504,85 @@ elif page == "trends":
     st.subheader("Income vs Expenses")
     st.plotly_chart(px.bar(pd.DataFrame(summ), x='Month', y='Amount', color='Type', barmode='group', color_discrete_map={'Income': '#00CC96', 'Expenses': '#EF553B'}), use_container_width=True)
     
-    # 2. Category Line Chart
+   # 2. Category Trends (IMPROVED & POLISHED)
     st.divider()
     st.subheader("Category Trends")
-    et = hist_df[(hist_df['Amount']<0)&(hist_df['Category']!='Transfer')&(hist_df['Category']!='Income')].copy()
-    et['Abs_Amount'] = et['Amount'].abs()
-    line_data = et.groupby(['Month','Category'])['Abs_Amount'].sum().reset_index()
-    st.plotly_chart(px.line(line_data, x='Month', y='Abs_Amount', color='Category', markers=True, color_discrete_sequence=px.colors.qualitative.Pastel), use_container_width=True)
 
+    # PREPARE DATA
+    et = hist_df[
+        (hist_df['Amount'] < 0) & 
+        (hist_df['Category'] != 'Transfer') & 
+        (hist_df['Category'] != 'Income')
+    ].copy()
+    et['Abs_Amount'] = et['Amount'].abs()
+    
+    # AGGREGATE MONTHLY
+    trend_data = et.groupby(['Month', 'Category'])['Abs_Amount'].sum().reset_index()
+
+    # UI CONTROLS
+    c_ctrl1, c_ctrl2 = st.columns([2, 1])
+    
+    with c_ctrl1:
+        top_cats = et.groupby('Category')['Abs_Amount'].sum().nlargest(5).index.tolist()
+        selected_cats = st.multiselect(
+            "Select Categories to Compare:",
+            options=sorted(trend_data['Category'].unique()),
+            default=top_cats
+        )
+        
+    with c_ctrl2:
+        chart_type = st.selectbox("Chart Type", ["Line Chart", "Stacked Bar", "Area Chart"])
+
+    # FILTER & PLOT
+    if selected_cats:
+        filtered_data = trend_data[trend_data['Category'].isin(selected_cats)]
+        
+        # --- COMMON CHART SETTINGS ---
+        # We define labels here once to use in all charts
+        chart_labels = {
+            "Abs_Amount": "Amount",  # <--- Renames 'Abs_Amount' to 'Amount'
+            "Month": "Date",
+            "Category": "Category"
+        }
+
+        if chart_type == "Stacked Bar":
+            fig = px.bar(
+                filtered_data, x='Month', y='Abs_Amount', color='Category', 
+                color_discrete_map=CATEGORY_COLORS,
+                labels=chart_labels # Apply labels
+            )
+        elif chart_type == "Area Chart":
+            fig = px.area(
+                filtered_data, x='Month', y='Abs_Amount', color='Category', 
+                color_discrete_map=CATEGORY_COLORS,
+                labels=chart_labels # Apply labels
+            )
+        else:
+            fig = px.line(
+                filtered_data, x='Month', y='Abs_Amount', color='Category', 
+                markers=True, 
+                color_discrete_map=CATEGORY_COLORS,
+                labels=chart_labels # Apply labels
+            )
+
+        # --- APPLY DATE FORMATTING TO HOVER ---
+        # %B = Full Month Name (July), %Y = Year (2025)
+        fig.update_traces(xhoverformat="%B %Y") 
+        
+        fig.update_layout(height=450, xaxis_title=None, yaxis_title="Amount (NOK)")
+        st.plotly_chart(fig, use_container_width=True)
+        
+    else:
+        st.info("Select at least one category above to see the trends.")
     # --- INTEGRATED FIXED VS VARIABLE HISTORY ---
     st.divider()
-    st.subheader("⚖️ Lifestyle Inflation (Fixed vs Variable over time)")
+    st.subheader("⚖️ Fixed vs Variable Expenses Over TSime")
     
     # Reuse 'et' dataframe (Expenses Only)
     monthly_type = et.groupby(['Month', 'Type_Tag'])['Abs_Amount'].sum().reset_index()
     
     fig_bar = px.bar(monthly_type, x='Month', y='Abs_Amount', color='Type_Tag', 
                      barmode='stack', 
-                     title="Are your fixed costs growing?",
+                     title="Are your fixed expenses growing?",
                      color_discrete_map={'Fixed': '#636EFA', 'Variable': '#EF553B'})
     st.plotly_chart(fig_bar, use_container_width=True)
