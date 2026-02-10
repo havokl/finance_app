@@ -7,11 +7,17 @@ import os
 DB_NAME = "finance.db"
 
 # --- 1. TABLE MANAGEMENT ---
+# database.py
+import sqlite3
+
+# ... existing code ...
+
+# --- 1. TABLE MANAGEMENT ---
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     
-    # Transactions Table
+    # ... existing transactions table ...
     c.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY,
@@ -24,16 +30,73 @@ def init_db():
         )
     ''')
     
-    # NEW: Rules Table
+    # ... existing rules table ...
     c.execute('''
         CREATE TABLE IF NOT EXISTS rules (
             keyword TEXT PRIMARY KEY,
             category TEXT
         )
     ''')
+
+    # NEW: Categories Table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            name TEXT PRIMARY KEY,
+            type TEXT
+        )
+    ''')
     
     conn.commit()
     conn.close()
+
+# --- CATEGORY MANAGEMENT ---
+def get_categories():
+    """Returns a dictionary {category_name: type} (e.g., {'Rent': 'Fixed'})"""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("SELECT name, type FROM categories")
+        data = c.fetchall()
+        return {name: type_tag for name, type_tag in data}
+    except Exception:
+        return {}
+    finally:
+        conn.close()
+
+def add_category(name, type_tag):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("INSERT OR REPLACE INTO categories (name, type) VALUES (?, ?)", (name, type_tag))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error adding category: {e}")
+        return False
+    finally:
+        conn.close()
+
+def delete_category(name):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("DELETE FROM categories WHERE name = ?", (name,))
+        # Optional: Also delete rules associated with this category?
+        # c.execute("DELETE FROM rules WHERE category = ?", (name,))
+        conn.commit()
+        return True
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+def seed_categories_if_empty(initial_categories):
+    """Populates DB with hardcoded categories if table is empty."""
+    current = get_categories()
+    if not current:
+        print("Seeding categories table...")
+        for name, type_tag in initial_categories.items():
+            add_category(name, type_tag)
 
 # --- 2. RULE MANAGEMENT ---
 def load_rules_from_db():
