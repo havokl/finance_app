@@ -409,8 +409,8 @@ elif page == "dashboard":
     with col3: 
         st.metric("Savings", f"{sav:,.0f} kr", delta=f"{sav_delta:,.0f} kr", delta_color="normal")
     with col4: 
-        burn_rate = (exp/inc*100) if inc > 0 else 0
-        st.metric("Burn Rate", f"{burn_rate:.0f}%", help="Target < 70%")
+        Savings_rate = ((inc-exp)/inc)*100 if (inc-exp)/inc > 0 else 0
+        st.metric("Saving Rate", f"{Savings_rate:.0f}%")
 
     st.markdown("---")
 
@@ -420,17 +420,51 @@ elif page == "dashboard":
     with c1:
         st.subheader("Spending Structure")
         if not expenses_df.empty:
-            # Donut Chart with Consistent Colors
-            fig = px.pie(expenses_df, values='Abs_Amount', names='Category', 
-                         hole=0.5, 
-                         color='Category',
-                         color_discrete_map=CATEGORY_COLORS) # Uses the map from Step 1
+            # Create two internal columns for Fixed vs Variable
+            col_fixed, col_var = st.columns(2)
             
-            # Label cleanup
-            fig.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
-            
-            fig.update_layout(height=350, margin=dict(t=20, b=20, l=20, r=20))
-            st.plotly_chart(fig, use_container_width=True)
+            # --- Chart 1: Fixed ---
+            with col_fixed:
+                # 1. Filter Data First
+                fixed_df = expenses_df[expenses_df['Type_Tag'] == 'Fixed']
+                # 2. Calculate Total
+                fixed_total = fixed_df['Abs_Amount'].sum() if not fixed_df.empty else 0
+                
+                # 3. Display Header with Total
+                st.markdown(f"**🔒 Fixed: {fixed_total:,.0f} kr**")
+                
+                if not fixed_df.empty:
+                    fig_fixed = px.pie(fixed_df, values='Abs_Amount', names='Category', 
+                                     hole=0.5, 
+                                     color='Category',
+                                     color_discrete_map=CATEGORY_COLORS)
+                    # Hide legend to keep the split view clean
+                    fig_fixed.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
+                    fig_fixed.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    st.plotly_chart(fig_fixed, use_container_width=True)
+                else:
+                    st.info("No fixed expenses.")
+
+            # --- Chart 2: Variable ---
+            with col_var:
+                # 1. Filter Data First
+                var_df = expenses_df[expenses_df['Type_Tag'] == 'Variable']
+                # 2. Calculate Total
+                var_total = var_df['Abs_Amount'].sum() if not var_df.empty else 0
+                
+                # 3. Display Header with Total
+                st.markdown(f"**🛒 Variable: {var_total:,.0f} kr**")
+                
+                if not var_df.empty:
+                    fig_var = px.pie(var_df, values='Abs_Amount', names='Category', 
+                                   hole=0.5, 
+                                   color='Category',
+                                   color_discrete_map=CATEGORY_COLORS)
+                    fig_var.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
+                    fig_var.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    st.plotly_chart(fig_var, use_container_width=True)
+                else:
+                    st.info("No variable expenses.")
         else:
             st.info("No expenses found.")
 
@@ -438,7 +472,7 @@ elif page == "dashboard":
         st.subheader("Top Expenses")
         if not expenses_df.empty:
             # Clean Table View
-            top_exp = expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(5)
+            top_exp = expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(8)
             st.dataframe(
                 top_exp, 
                 column_config={
@@ -523,15 +557,20 @@ elif page == "trends":
     c_ctrl1, c_ctrl2 = st.columns([2, 1])
     
     with c_ctrl1:
-        top_cats = et.groupby('Category')['Abs_Amount'].sum().nlargest(5).index.tolist()
+        # Filter for 'Variable' expenses first
+        variable_only = et[et['Type_Tag'] == 'Variable']
+        
+        # Get the top 7 largest VARIABLE categories
+        top_variable_cats = variable_only.groupby('Category')['Abs_Amount'].sum().nlargest(7).index.tolist()
+        
         selected_cats = st.multiselect(
             "Select Categories to Compare:",
-            options=sorted(trend_data['Category'].unique()),
-            default=top_cats
+            options=sorted(trend_data['Category'].unique()), # All categories still available as options
+            default=top_variable_cats # Default selection is now specific to Variable
         )
         
     with c_ctrl2:
-        chart_type = st.selectbox("Chart Type", ["Line Chart", "Stacked Bar", "Area Chart"])
+        chart_type = st.selectbox("Chart Type", ["Area Chart","Line Chart", "Stacked Bar" ])
 
     # FILTER & PLOT
     if selected_cats:

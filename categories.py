@@ -80,6 +80,9 @@ CATEGORY_RULES = {
     'REMA': 'Groceries',
     'SPAR LONE': 'Groceries',
 
+    # --- Health ---
+    'KLINIKK FOR ALLE BERGEN': 'Health',
+
     # --- Income ---
     'AKER BP': 'Income',
     'FRA AKER SOLUTIONS AS': 'Income',
@@ -206,6 +209,7 @@ EXPENSE_TYPES = {
     'Gifts': 'Variable',
     'Car': 'Variable',
     'Recreation & Well Beeing': 'Variable',
+    'Health':'Variable',
 
     # NEW: Add Misc here
     'Misc': 'Variable',
