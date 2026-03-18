@@ -4,6 +4,7 @@ import plotly.express as px
 from datetime import datetime
 from data_processor import process_files
 from streamlit_option_menu import option_menu
+from categories import EXPENSE_TYPES, CATEGORY_RULES, CATEGORY_ICONS # Add CATEGORY_ICONS to import
 import database
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
 
@@ -360,65 +361,105 @@ elif page == "dashboard":
             
             # --- Chart 1: Fixed ---
             with col_fixed:
-                # 1. Filter Data First
                 fixed_df = expenses_df[expenses_df['Type_Tag'] == 'Fixed']
-                # 2. Calculate Total
                 fixed_total = fixed_df['Abs_Amount'].sum() if not fixed_df.empty else 0
-                
-                # 3. Display Header with Total
                 st.markdown(f"**🔒 Fixed: {fixed_total:,.0f} kr**")
                 
                 if not fixed_df.empty:
-                    fig_fixed = px.pie(fixed_df, values='Abs_Amount', names='Category', 
-                                     hole=0.5, 
-                                     color='Category',
-                                     color_discrete_map=CATEGORY_COLORS)
-                    # Hide legend to keep the split view clean
-                    fig_fixed.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
-                    fig_fixed.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    # 1. Prepare Data
+                    summary_fixed = fixed_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    summary_fixed = summary_fixed.sort_values(by='Abs_Amount', ascending=False)
+                    
+                    # 2. Calculate Percentages and Labels
+                    total_f = summary_fixed['Abs_Amount'].sum()
+                    summary_fixed['Percent'] = (summary_fixed['Abs_Amount'] / total_f * 100).round(1)
+                    summary_fixed['Custom_Label'] = (
+                        summary_fixed['Category'].map(CATEGORY_ICONS).fillna('❓') + 
+                        "<br>" + summary_fixed['Percent'].astype(str) + "%"
+                    )
+
+                    # 3. CREATE the figure (This defines 'fig_fixed')
+                    fig_fixed = px.pie(
+                        summary_fixed, 
+                        values='Abs_Amount', 
+                        names='Category', 
+                        hole=0.5, 
+                        color='Category', 
+                        color_discrete_map=CATEGORY_COLORS
+                    )
+                    
+                    # 4. UPDATE the figure
+                    fig_fixed.update_traces(
+                        textinfo='text', 
+                        text=summary_fixed['Custom_Label'],
+                        textposition='inside',
+                        insidetextorientation='horizontal',
+                        hovertemplate='%{label}: %{value:,.0f} kr'
+                    )
+                    
+                    fig_fixed.update_layout(
+                        uniformtext_minsize=13, 
+                        uniformtext_mode='hide',
+                        height=350, 
+                        margin=dict(t=10, b=10, l=10, r=10), 
+                        showlegend=False
+                    )
+                    
+                    # 5. DISPLAY the figure
                     st.plotly_chart(fig_fixed, use_container_width=True)
                 else:
                     st.info("No fixed expenses.")
 
             # --- Chart 2: Variable ---
             with col_var:
-                # 1. Filter Data First
                 var_df = expenses_df[expenses_df['Type_Tag'] == 'Variable']
-                # 2. Calculate Total
                 var_total = var_df['Abs_Amount'].sum() if not var_df.empty else 0
-                
-                # 3. Display Header with Total
                 st.markdown(f"**🛒 Variable: {var_total:,.0f} kr**")
                 
                 if not var_df.empty:
-                    fig_var = px.pie(var_df, values='Abs_Amount', names='Category', 
-                                   hole=0.5, 
-                                   color='Category',
-                                   color_discrete_map=CATEGORY_COLORS)
-                    fig_var.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
-                    fig_var.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    # 1. Prepare Data
+                    summary_var = var_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    summary_var = summary_var.sort_values(by='Abs_Amount', ascending=False)
+                    
+                    # 2. Calculate Percentages and Labels
+                    total_v = summary_var['Abs_Amount'].sum()
+                    summary_var['Percent'] = (summary_var['Abs_Amount'] / total_v * 100).round(1)
+                    summary_var['Custom_Label'] = (
+                        summary_var['Category'].map(CATEGORY_ICONS).fillna('❓') + 
+                        "<br>" + summary_var['Percent'].astype(str) + "%"
+                    )
+
+                    # 3. CREATE the figure (This defines 'fig_var')
+                    fig_var = px.pie(
+                        summary_var, 
+                        values='Abs_Amount', 
+                        names='Category', 
+                        hole=0.5, 
+                        color='Category', 
+                        color_discrete_map=CATEGORY_COLORS
+                    )
+                    
+                    # 4. UPDATE the figure
+                    fig_var.update_traces(
+                        textinfo='text', 
+                        text=summary_var['Custom_Label'],
+                        textposition='inside',
+                        insidetextorientation='horizontal',
+                        hovertemplate='%{label}: %{value:,.0f} kr'
+                    )
+                    
+                    fig_var.update_layout(
+                        uniformtext_minsize=13, 
+                        uniformtext_mode='hide',
+                        height=350, 
+                        margin=dict(t=10, b=10, l=10, r=10), 
+                        showlegend=False
+                    )
+                    
+                    # 5. DISPLAY the figure
                     st.plotly_chart(fig_var, use_container_width=True)
                 else:
                     st.info("No variable expenses.")
-        else:
-            st.info("No expenses found.")
-
-    with c2:
-        st.subheader("Top Expenses")
-        if not expenses_df.empty:
-            # Clean Table View
-            top_exp = expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(8)
-            st.dataframe(
-                top_exp, 
-                column_config={
-                    "Amount": st.column_config.NumberColumn(format="kr %.0f"),
-                    "Description": st.column_config.TextColumn(width="medium"),
-                },
-                hide_index=True, 
-                use_container_width=True
-            )
-        else:
-            st.info("No data.")
 
     # --- INTEGRATED FIXED VS VARIABLE SECTION ---
     st.divider()
@@ -550,7 +591,7 @@ elif page == "trends":
         st.info("Select at least one category above to see the trends.")
     # --- INTEGRATED FIXED VS VARIABLE HISTORY ---
     st.divider()
-    st.subheader("⚖️ Fixed vs Variable Expenses Over TSime")
+    st.subheader("⚖️ Fixed vs Variable Expenses Over Time")
     
     # Reuse 'et' dataframe (Expenses Only)
     monthly_type = et.groupby(['Month', 'Type_Tag'])['Abs_Amount'].sum().reset_index()

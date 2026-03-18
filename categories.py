@@ -220,3 +220,25 @@ EXPENSE_TYPES = {
     'Transfer': 'Ignore',
     'Income': 'Ignore'
 }
+
+CATEGORY_ICONS = {
+    "Groceries": "🛒",
+    "Dining/Drinks": "🍹",
+    "Rent": "🏠",
+    "Mortgage": "🏦",
+    "Utilities": "⚡",
+    "Travel": "✈️",
+    "Shopping": "🛍️",
+    "Car": "🚗",
+    "Insurance": "🛡️",
+    "Subscriptions": "📺",
+    "Saving": "💰",
+    "Income": "💵",
+    "Transfer": "↔️",
+    "Uncategorized": "❓",
+    "Electronics": "💻",
+    "Furniture & Appliances": "🛋️",
+    "Gifts": "🎁",
+    "Health": "🏥",
+    "Recreation & Well Beeing": "🎭"
+}
