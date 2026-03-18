@@ -4,31 +4,42 @@ import plotly.express as px
 from datetime import datetime
 from data_processor import process_files
 from streamlit_option_menu import option_menu
+from categories import EXPENSE_TYPES, CATEGORY_RULES, CATEGORY_ICONS # Add CATEGORY_ICONS to import
 import database
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
 
 
-CATEGORY_COLORS = {
-    "Groceries": "#AED581",  # Light Green
-    "Dining/Drinks": "#FF8A65", # Soft Orange
-    "Rent": "#64B5F6", # Soft Blue
-    "Mortgage": "#42A5F5", # Darker Blue
-    "Utilities": "#FFD54F", # Amber
-    "Travel": "#4DB6AC", # Teal
-    "Shopping": "#BA68C8", # Light Purple
-    "Car": "#90A4AE", # Blue Grey
-    "Insurance": "#E57373", # Light Red
-    "Subscriptions": "#9575CD", # Deep Purple
-    "Saving": "#81C784", # Green
-    "Income": "#66BB6A", 
-    "Transfer": "#E0E0E0",
-    "Uncategorized": "#E0E0E0"
-}
 
-# --- 1. CONFIGURATION ---
+# --- CONFIGURATION ---
 st.set_page_config(page_title="Finance Dashboard", page_icon="💰", layout="wide")
 database.init_db()
+
+# Seed the database with your existing python files on startup
 database.seed_rules_if_empty(CATEGORY_RULES)
+database.seed_categories_if_empty(EXPENSE_TYPES)
+
+# Fetch dynamic configuration
+ALL_CATEGORIES = database.get_categories() # Returns dict {'Rent': 'Fixed', ...}
+CATEGORY_LIST = list(ALL_CATEGORIES.keys())
+
+# --- DYNAMIC COLOR GENERATOR ---
+# Since categories are now dynamic, we can't hardcode all colors.
+# This function maps your known colors and generates grey/random for new ones.
+def get_category_color_map():
+    base_colors = {
+        "Groceries": "#AED581", "Dining/Drinks": "#FF8A65", "Rent": "#64B5F6",
+        "Mortgage": "#42A5F5", "Utilities": "#FFD54F", "Travel": "#4DB6AC",
+        "Shopping": "#BA68C8", "Car": "#90A4AE", "Insurance": "#E57373",
+        "Subscriptions": "#9575CD", "Saving": "#81C784", "Income": "#66BB6A",
+        "Transfer": "#E0E0E0", "Uncategorized": "#E0E0E0"
+    }
+    # Ensure every category in DB has a color (default to grey if unknown)
+    full_map = {}
+    for cat in CATEGORY_LIST:
+        full_map[cat] = base_colors.get(cat, "#CFD8DC") # Default Grey
+    return full_map
+
+CATEGORY_COLORS = get_category_color_map()
 
 # --- CSS STYLING ---
 st.markdown("""
@@ -67,35 +78,26 @@ st.markdown("""
 df = database.load_all_transactions()
 uncat_count = len(df[df['Category'] == 'Uncategorized']) if not df.empty else 0
 
-# --- 3. SIDEBAR ---
-# --- 3. SIDEBAR & MENU ---
+
+# --- SIDEBAR: NAVIGATION ---
+# Change "selected_tab" to "selected"
 with st.sidebar:
-    st.title("Finance App")
-    
-    selected = option_menu(
-        menu_title=None, 
-        options=["Dashboard", "Trends", "Categorize"], 
-        icons=["speedometer2", "graph-up-arrow", "check-circle"], 
-        menu_icon="cast", 
+    st.header("Navigation")
+    selected = option_menu(  # <--- Rename this from selected_tab to selected
+        menu_title=None,
+        options=["Dashboard", "Trends", "Categorize", "Settings"], 
+        icons=["speedometer2", "graph-up", "tags", "gear"],
         default_index=0,
-        # --- NEW STYLING BLOCK ---
-        styles={
-            "container": {"padding": "0!important", "background-color": "#fafafa"},
-            "icon": {"color": "#0b0b0b", "font-size": "16px"}, 
-            "nav-link": {
-                "font-size": "16px", 
-                "text-align": "left", 
-                "margin": "0px", 
-                "--hover-color": "#eee"
-            },
-            "nav-link-selected": {
-            "background-color": "#dae3edf6",
-            "font-weight": "normal",  
-        },
-        }
     )
 
-    page_map = {"Dashboard": "dashboard", "Trends": "trends", "Categorize": "categorization"}
+  
+    page_map = {
+    "Dashboard": "dashboard", 
+    "Trends": "trends", 
+    "Categorize": "categorization", 
+    "Settings": "settings"
+    }
+
     page = page_map[selected]
 
     st.divider()
@@ -160,155 +162,89 @@ if df.empty:
 
 # --- GLOBAL PROCESSING ---
 df['Month_Year'] = df['Date'].dt.to_period('M')
-df['Type_Tag'] = df['Category'].map(EXPENSE_TYPES).fillna('Variable') 
+df['Type_Tag'] = df['Category'].map(ALL_CATEGORIES).fillna('Variable') 
 
 # ==========================================
 #      VIEW: CATEGORIZATION
 # ==========================================
 if page == "categorization":
-    st.header("🔍 Categorization Center")
-    tab1, tab2 = st.tabs(["📝 Review Transactions", "🧠 Manage Rules"])
+    st.header("📝 Review Transactions")
     
-    # ... inside app.py (inside the 'categorization' page block)
+    # Calculate progress
+    total_tx = len(df)
+    uncat_tx = len(df[df['Category'] == 'Uncategorized'])
+    progress = int(((total_tx - uncat_tx) / total_tx) * 100) if total_tx > 0 else 100
 
-    with tab1:
-        # Calculate progress
-        total_tx = len(df)
-        uncat_tx = len(df[df['Category'] == 'Uncategorized'])
-        progress = int(((total_tx - uncat_tx) / total_tx) * 100) if total_tx > 0 else 100
+    if uncat_tx > 0:
+        st.warning(f"🚨 {uncat_tx} transactions need your attention!")
+        st.progress(progress, text=f"Categorization Progress: {progress}%")
+    else:
+        st.balloons()
+        st.success("🎉 All caught up! Great job.")
+
+    # 1. Allow toggling between "Uncategorized Only" and "All Transactions"
+    col_filter, _ = st.columns([1, 3])
+    with col_filter:
+        show_all = st.toggle("Show all transactions", value=False)
     
-        if uncat_tx > 0:
-            st.warning(f"🚨 {uncat_tx} transactions need your attention!")
-            st.progress(progress, text=f"Categorization Progress: {progress}%")
+    # 2. Filter the dataframe based on toggle
+    if show_all:
+        display_df = df.copy() # Edit anything
+        st.info(f"Showing all {len(display_df)} transactions.")
+    else:
+        display_df = df[df['Category'] == 'Uncategorized'].copy() # Standard workflow
+        if display_df.empty:
+            st.success("🎉 No uncategorized transactions!")
         else:
-            st.balloons()
-            st.success("🎉 All caught up! Great job.")
+            st.info(f"Reviewing {len(display_df)} items.")
 
-        # 1. Allow toggling between "Uncategorized Only" and "All Transactions"
-        col_filter, _ = st.columns([1, 3])
-        with col_filter:
-            show_all = st.toggle("Show all transactions", value=False)
+    if not display_df.empty:
+        valid_categories = sorted(list(set(list(ALL_CATEGORIES.keys()) + ['Income', 'Transfer'])))
         
-        # 2. Filter the dataframe based on toggle
-        if show_all:
-            display_df = df.copy() # Edit anything
-            st.info(f"Showing all {len(display_df)} transactions.")
-        else:
-            display_df = df[df['Category'] == 'Uncategorized'].copy() # Standard workflow
-            if display_df.empty:
-                st.success("🎉 No uncategorized transactions!")
-            else:
-                st.info(f"Reviewing {len(display_df)} items.")
-
-        if not display_df.empty:
-            valid_categories = sorted(list(set(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer'])))
+        # 3. Configure Editor: Enable Amount editing
+        edited_df = st.data_editor(
+            display_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
+            column_config={
+                "Category": st.column_config.SelectboxColumn("Assign", options=valid_categories, required=True),
+                "id": None, # Hidden
+                "Date": st.column_config.DatetimeColumn(disabled=True, format="D MMM"),
+                "Description": st.column_config.TextColumn(disabled=True),
+                "Amount": st.column_config.NumberColumn(label="Amount", disabled=False, format="%.0f", required=True)
+            },
+            hide_index=True, 
+            use_container_width=True, 
+            num_rows="fixed",
+            key="editor_cat"
+        )
+        
+        # 4. Save Logic: Detect Category OR Amount changes
+        if st.button("💾 Save Changes", type="primary"):
+            changes_count = 0
             
-            # 3. Configure Editor: Enable Amount editing
-            edited_df = st.data_editor(
-                display_df[['Date', 'Description', 'Amount', 'Category', 'id']], 
-                column_config={
-                    "Category": st.column_config.SelectboxColumn("Assign", options=valid_categories, required=True),
-                    "id": None, # Hidden
-                    "Date": st.column_config.DatetimeColumn(disabled=True, format="D MMM"),
-                    "Description": st.column_config.TextColumn(disabled=True),
-                    # CHANGE: Set disabled=False so you can edit amounts
-                    "Amount": st.column_config.NumberColumn(label="Amount", disabled=False, format="%.0f", required=True)
-                },
-                hide_index=True, 
-                use_container_width=True, 
-                num_rows="fixed",
-                key="editor_cat"
-            )
-            
-            # 4. Save Logic: Detect Category OR Amount changes
-            if st.button("💾 Save Changes", type="primary"):
-                changes_count = 0
+            for index, row in edited_df.iterrows():
+                trans_id = row['id']
+                original_rows = df[df['id'] == trans_id]
                 
-                # We iterate through the EDITED dataframe
-                for index, row in edited_df.iterrows():
-                    trans_id = row['id']
+                if not original_rows.empty:
+                    original_row = original_rows.iloc[0]
                     
-                    # Find the ORIGINAL row in the main dataframe to compare values
-                    # (We use safe indexing in case the ID is somehow missing, though unlikely)
-                    original_rows = df[df['id'] == trans_id]
-                    
-                    if not original_rows.empty:
-                        original_row = original_rows.iloc[0]
-                        
-                        # Check 1: Did Category Change?
-                        if row['Category'] != original_row['Category']:
-                            # Only update if it's not 'Uncategorized' (force user to choose a real category)
-                            if row['Category'] != 'Uncategorized':
-                                if database.update_transaction_category(trans_id, row['Category']):
-                                    changes_count += 1
-
-                        # Check 2: Did Amount Change? (Float comparison with small tolerance)
-                        if abs(row['Amount'] - original_row['Amount']) > 0.01:
-                            if database.update_transaction_amount(trans_id, row['Amount']):
+                    # Check 1: Category Change
+                    if row['Category'] != original_row['Category']:
+                        if row['Category'] != 'Uncategorized':
+                            if database.update_transaction_category(trans_id, row['Category']):
                                 changes_count += 1
-                
-                if changes_count > 0:
-                    st.toast(f"✅ Updated {changes_count} items!", icon="💾")
-                    st.rerun()
-                else:
-                    st.info("No changes detected.")
 
-    with tab2:
-        st.subheader("Teach the App")
-        c1, c2, c3 = st.columns([2, 2, 1])
-        with c1: new_keyword = st.text_input("If description contains:", placeholder="e.g. NETFLIX")
-        with c2: new_category = st.selectbox("Then categorize as:", sorted(list(set(list(EXPENSE_TYPES.keys()) + ['Income', 'Transfer']))))
-        with c3:
-            st.write("") 
-            st.write("") 
-            if st.button("➕ Add Rule") and new_keyword:
-                database.add_rule(new_keyword, new_category)
-                st.success(f"Added: {new_keyword}")
+                    # Check 2: Amount Change
+                    if abs(row['Amount'] - original_row['Amount']) > 0.01:
+                        if database.update_transaction_amount(trans_id, row['Amount']):
+                            changes_count += 1
+            
+            if changes_count > 0:
+                st.toast(f"✅ Updated {changes_count} items!", icon="💾")
                 st.rerun()
-        
-        st.divider()
-        rules_df = pd.DataFrame(list(database.load_rules_from_db().items()), columns=['Keyword', 'Category']).sort_values('Keyword')
-        rules_df['Delete'] = False
-        edited_rules = st.data_editor(rules_df, column_config={"Keyword": st.column_config.TextColumn(disabled=True), "Category": st.column_config.TextColumn(disabled=True)}, hide_index=True, use_container_width=True)
-        to_delete = edited_rules[edited_rules['Delete'] == True]
-        if not to_delete.empty:
-            if st.button(f"🗑️ Delete {len(to_delete)} Rules"):
-                for k in to_delete['Keyword']: database.delete_rule(k)
-                st.rerun()
-        if not to_delete.empty:
-            if st.button(f"🗑️ Delete {len(to_delete)} Rules"):
-                for k in to_delete['Keyword']: database.delete_rule(k)
-                st.rerun()
+            else:
+                st.info("No changes detected.")
 
-        # --- NEW CODE STARTS HERE ---
-        st.markdown("---")
-        st.subheader("📤 Export for categories.py")
-        st.caption("Copy this code and replace the CATEGORY_RULES dictionary in your categories.py file.")
-        
-        # 1. Load current live rules
-        current_rules = database.load_rules_from_db()
-        
-        # 2. Sort by Category first (item[1]), then by Keyword (item[0])
-        # This groups all "Groceries" together, then all "Income" together, etc.
-        sorted_items = sorted(current_rules.items(), key=lambda item: (item[1], item[0]))
-        
-        # 3. Build the string
-        dict_str = "CATEGORY_RULES = {\n"
-        
-        # We can also add comments to separate the groups visually
-        current_category = ""
-        for keyword, category in sorted_items:
-            # Optional: Add a comment header when the category changes
-            if category != current_category:
-                dict_str += f"\n    # --- {category} ---\n"
-                current_category = category
-            
-            dict_str += f"    '{keyword}': '{category}',\n"
-            
-        dict_str += "}"
-        
-        # 4. Display
-        st.code(dict_str, language='python')
 
 
 
@@ -425,65 +361,105 @@ elif page == "dashboard":
             
             # --- Chart 1: Fixed ---
             with col_fixed:
-                # 1. Filter Data First
                 fixed_df = expenses_df[expenses_df['Type_Tag'] == 'Fixed']
-                # 2. Calculate Total
                 fixed_total = fixed_df['Abs_Amount'].sum() if not fixed_df.empty else 0
-                
-                # 3. Display Header with Total
                 st.markdown(f"**🔒 Fixed: {fixed_total:,.0f} kr**")
                 
                 if not fixed_df.empty:
-                    fig_fixed = px.pie(fixed_df, values='Abs_Amount', names='Category', 
-                                     hole=0.5, 
-                                     color='Category',
-                                     color_discrete_map=CATEGORY_COLORS)
-                    # Hide legend to keep the split view clean
-                    fig_fixed.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
-                    fig_fixed.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    # 1. Prepare Data
+                    summary_fixed = fixed_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    summary_fixed = summary_fixed.sort_values(by='Abs_Amount', ascending=False)
+                    
+                    # 2. Calculate Percentages and Labels
+                    total_f = summary_fixed['Abs_Amount'].sum()
+                    summary_fixed['Percent'] = (summary_fixed['Abs_Amount'] / total_f * 100).round(1)
+                    summary_fixed['Custom_Label'] = (
+                        summary_fixed['Category'].map(CATEGORY_ICONS).fillna('❓') + 
+                        "<br>" + summary_fixed['Percent'].astype(str) + "%"
+                    )
+
+                    # 3. CREATE the figure (This defines 'fig_fixed')
+                    fig_fixed = px.pie(
+                        summary_fixed, 
+                        values='Abs_Amount', 
+                        names='Category', 
+                        hole=0.5, 
+                        color='Category', 
+                        color_discrete_map=CATEGORY_COLORS
+                    )
+                    
+                    # 4. UPDATE the figure
+                    fig_fixed.update_traces(
+                        textinfo='text', 
+                        text=summary_fixed['Custom_Label'],
+                        textposition='inside',
+                        insidetextorientation='horizontal',
+                        hovertemplate='%{label}: %{value:,.0f} kr'
+                    )
+                    
+                    fig_fixed.update_layout(
+                        uniformtext_minsize=13, 
+                        uniformtext_mode='hide',
+                        height=350, 
+                        margin=dict(t=10, b=10, l=10, r=10), 
+                        showlegend=False
+                    )
+                    
+                    # 5. DISPLAY the figure
                     st.plotly_chart(fig_fixed, use_container_width=True)
                 else:
                     st.info("No fixed expenses.")
 
             # --- Chart 2: Variable ---
             with col_var:
-                # 1. Filter Data First
                 var_df = expenses_df[expenses_df['Type_Tag'] == 'Variable']
-                # 2. Calculate Total
                 var_total = var_df['Abs_Amount'].sum() if not var_df.empty else 0
-                
-                # 3. Display Header with Total
                 st.markdown(f"**🛒 Variable: {var_total:,.0f} kr**")
                 
                 if not var_df.empty:
-                    fig_var = px.pie(var_df, values='Abs_Amount', names='Category', 
-                                   hole=0.5, 
-                                   color='Category',
-                                   color_discrete_map=CATEGORY_COLORS)
-                    fig_var.update_traces(hovertemplate='%{label}: %{value:,.0f} kr')
-                    fig_var.update_layout(height=300, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+                    # 1. Prepare Data
+                    summary_var = var_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    summary_var = summary_var.sort_values(by='Abs_Amount', ascending=False)
+                    
+                    # 2. Calculate Percentages and Labels
+                    total_v = summary_var['Abs_Amount'].sum()
+                    summary_var['Percent'] = (summary_var['Abs_Amount'] / total_v * 100).round(1)
+                    summary_var['Custom_Label'] = (
+                        summary_var['Category'].map(CATEGORY_ICONS).fillna('❓') + 
+                        "<br>" + summary_var['Percent'].astype(str) + "%"
+                    )
+
+                    # 3. CREATE the figure (This defines 'fig_var')
+                    fig_var = px.pie(
+                        summary_var, 
+                        values='Abs_Amount', 
+                        names='Category', 
+                        hole=0.5, 
+                        color='Category', 
+                        color_discrete_map=CATEGORY_COLORS
+                    )
+                    
+                    # 4. UPDATE the figure
+                    fig_var.update_traces(
+                        textinfo='text', 
+                        text=summary_var['Custom_Label'],
+                        textposition='inside',
+                        insidetextorientation='horizontal',
+                        hovertemplate='%{label}: %{value:,.0f} kr'
+                    )
+                    
+                    fig_var.update_layout(
+                        uniformtext_minsize=13, 
+                        uniformtext_mode='hide',
+                        height=350, 
+                        margin=dict(t=10, b=10, l=10, r=10), 
+                        showlegend=False
+                    )
+                    
+                    # 5. DISPLAY the figure
                     st.plotly_chart(fig_var, use_container_width=True)
                 else:
                     st.info("No variable expenses.")
-        else:
-            st.info("No expenses found.")
-
-    with c2:
-        st.subheader("Top Expenses")
-        if not expenses_df.empty:
-            # Clean Table View
-            top_exp = expenses_df[['Description', 'Amount', 'Category']].sort_values('Amount', ascending=True).head(8)
-            st.dataframe(
-                top_exp, 
-                column_config={
-                    "Amount": st.column_config.NumberColumn(format="kr %.0f"),
-                    "Description": st.column_config.TextColumn(width="medium"),
-                },
-                hide_index=True, 
-                use_container_width=True
-            )
-        else:
-            st.info("No data.")
 
     # --- INTEGRATED FIXED VS VARIABLE SECTION ---
     st.divider()
@@ -615,7 +591,7 @@ elif page == "trends":
         st.info("Select at least one category above to see the trends.")
     # --- INTEGRATED FIXED VS VARIABLE HISTORY ---
     st.divider()
-    st.subheader("⚖️ Fixed vs Variable Expenses Over TSime")
+    st.subheader("⚖️ Fixed vs Variable Expenses Over Time")
     
     # Reuse 'et' dataframe (Expenses Only)
     monthly_type = et.groupby(['Month', 'Type_Tag'])['Abs_Amount'].sum().reset_index()
@@ -625,3 +601,99 @@ elif page == "trends":
                      title="Are your fixed expenses growing?",
                      color_discrete_map={'Fixed': '#636EFA', 'Variable': '#EF553B'})
     st.plotly_chart(fig_bar, use_container_width=True)
+
+
+# ... (after all the logic for Dashboard, Trends, and Categorize) ...
+
+if selected == "Settings":
+    st.title("⚙️ Settings & Management")
+    
+    col1, col2 = st.columns(2)
+    
+    # --- LEFT COLUMN: CATEGORIES ---
+    with col1:
+        st.subheader("📂 Manage Categories")
+        st.write("Add new spending categories here.")
+        
+        # Add New Category
+        with st.form("add_cat_form"):
+            new_cat_name = st.text_input("New Category Name")
+            new_cat_type = st.selectbox("Type", ["Variable", "Fixed"])
+            submitted = st.form_submit_button("Add Category")
+            
+            if submitted and new_cat_name:
+                if new_cat_name in ALL_CATEGORIES:
+                    st.warning("Category already exists.")
+                else:
+                    database.add_category(new_cat_name, new_cat_type)
+                    st.success(f"Added {new_cat_name}!")
+                    st.rerun()
+
+        # List / Delete Categories
+        st.divider()
+        st.write("Existing Categories:")
+        for cat, type_tag in ALL_CATEGORIES.items():
+            c1, c2, c3 = st.columns([2, 2, 1])
+            c1.text(cat)
+            c2.caption(type_tag)
+            if c3.button("🗑️", key=f"del_{cat}"):
+                database.delete_category(cat)
+                st.rerun()
+
+    # --- RIGHT COLUMN: RULES ---
+    with col2:
+        st.subheader("🧠 Manage Rules")
+        st.write("Automate categorization based on keywords.")
+        
+        c_r1, c_r2 = st.columns([2, 2])
+        with c_r1: 
+            new_keyword = st.text_input("If description contains:", placeholder="e.g. NETFLIX")
+        with c_r2: 
+            # Income/Transfer + Dynamic Categories
+            rule_cats = sorted(list(set(list(ALL_CATEGORIES.keys()) + ['Income', 'Transfer'])))
+            new_category = st.selectbox("Assign Category:", rule_cats)
+            
+        if st.button("➕ Add Rule") and new_keyword:
+            database.add_rule(new_keyword, new_category)
+            st.success(f"Added rule: {new_keyword} -> {new_category}")
+            st.rerun()
+        
+        st.divider()
+        
+        # Rule Editor
+        rules = database.load_rules_from_db()
+        rules_df = pd.DataFrame(list(rules.items()), columns=['Keyword', 'Category']).sort_values('Keyword')
+        rules_df['Delete'] = False # Add checkbox column
+        
+        edited_rules = st.data_editor(
+            rules_df, 
+            column_config={
+                "Keyword": st.column_config.TextColumn(disabled=True), 
+                "Category": st.column_config.TextColumn(disabled=True)
+            }, 
+            hide_index=True, 
+            use_container_width=True
+        )
+        
+        # Delete Logic
+        to_delete = edited_rules[edited_rules['Delete'] == True]
+        if not to_delete.empty:
+            if st.button(f"🗑️ Delete {len(to_delete)} Rules"):
+                for k in to_delete['Keyword']: 
+                    database.delete_rule(k)
+                st.rerun()
+
+        # Export Logic
+        st.markdown("---")
+        with st.expander("📤 View Python Dictionary (Advanced)"):
+            st.caption("Use this if you want to update categories.py manually.")
+            sorted_items = sorted(rules.items(), key=lambda item: (item[1], item[0]))
+            dict_str = "CATEGORY_RULES = {\n"
+            current_category = ""
+            for keyword, category in sorted_items:
+                if category != current_category:
+                    dict_str += f"\n    # --- {category} ---\n"
+                    current_category = category
+                dict_str += f"    '{keyword}': '{category}',\n"
+            dict_str += "}"
+            st.code(dict_str, language='python')
