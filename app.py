@@ -393,6 +393,7 @@ elif page == "dashboard":
                         textinfo='text', 
                         text=summary_fixed['Custom_Label'],
                         textposition='inside',
+                        textfont_size=30,
                         insidetextorientation='horizontal',
                         hovertemplate='%{label}: %{value:,.0f} kr'
                     )
@@ -409,6 +410,7 @@ elif page == "dashboard":
                     st.plotly_chart(fig_fixed, use_container_width=True)
                 else:
                     st.info("No fixed expenses.")
+
 
             # --- Chart 2: Variable ---
             with col_var:
@@ -443,6 +445,7 @@ elif page == "dashboard":
                     fig_var.update_traces(
                         textinfo='text', 
                         text=summary_var['Custom_Label'],
+                        textfont_size=30,
                         textposition='inside',
                         insidetextorientation='horizontal',
                         hovertemplate='%{label}: %{value:,.0f} kr'
