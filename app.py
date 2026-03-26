@@ -203,22 +203,69 @@ df['Type_Tag'] = df['Category'].map(ALL_CATEGORIES).fillna('Variable')
 #      VIEW: CATEGORY DRILL-DOWN PAGE
 # ==========================================
 if st.session_state.selected_category:
-    st.header(f"🗂️ Transactions for: {st.session_state.selected_category}")
+    selected_cat = st.session_state.selected_category
+    st.header(f"🗂️ Transactions for: {selected_cat}")
     
     # Back button to return to the dashboard
     if st.button("⬅️ Back to Dashboard"):
         st.session_state.selected_category = None
         st.rerun()
         
-    # Filter Data for the selected category and month
-    detail_df = df[df['Category'] == st.session_state.selected_category].copy()
+    # Filter Data for the selected category and month (for the table)
+    detail_df = df[df['Category'] == selected_cat].copy()
     
     selected_m = st.session_state.selected_month
     if selected_m != "All Time":
         detail_df = detail_df[detail_df['Month_Year'].astype(str) == selected_m]
+        # Convert "YYYY-MM" to "Month YYYY" (e.g., "February 2024")
+        display_month = datetime.strptime(selected_m, "%Y-%m").strftime("%B %Y")
+    else:
+        display_month = "All Time"
         
-    st.subheader(f"Timeframe: {selected_m}")
+     # --- NEW: 12-MONTH TREND CHART ---
+    st.divider()
+    st.subheader(f"📈 12-Month Spending Trend for {selected_cat}")
     
+    # Use the global 'df' to get all historical data for this category
+    trend_df = df[df['Category'] == selected_cat].copy()
+    
+    if not trend_df.empty:
+        # Group by Month
+        trend_df['Month_Str'] = trend_df['Month_Year'].astype(str)
+        monthly_trend = trend_df.groupby('Month_Str')['Amount'].sum().reset_index()
+        
+        # Convert amounts to absolute values (so expenses show as positive bars)
+        monthly_trend['Abs_Amount'] = monthly_trend['Amount'].abs()
+        
+        # Sort chronologically and take the last 12 months
+        monthly_trend = monthly_trend.sort_values('Month_Str').tail(12)
+        
+        # Plot using Plotly Express (px)
+        fig = px.bar(
+            monthly_trend, 
+            x='Month_Str', 
+            y='Abs_Amount',
+            text_auto='.0f', # Shows the amount on top of the bars
+            labels={'Month_Str': 'Month', 'Abs_Amount': 'Amount'},
+            color_discrete_sequence=[CATEGORY_COLORS.get(selected_cat, '#4285F4')] # Uses the category's assigned color
+        )
+        
+        # Clean up the chart layout
+        fig.update_traces(textposition='outside')
+        fig.update_layout(
+            xaxis_title=None, 
+            yaxis_title="Amount", 
+            height=350,
+            margin=dict(t=20, b=20, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No historical data available for a trend chart.")
+    
+    # Updated to use the correctly formatted month string
+    st.subheader(f"Transaction details: {display_month}")
+
     # Display the transactions in a clean table
     if detail_df.empty:
         st.info("No transactions found for this category in the selected timeframe.")
@@ -231,7 +278,6 @@ if st.session_state.selected_category:
         
     # Stop rendering the rest of the app so it acts as a separate page
     st.stop()
-
 
 
 # ==========================================
@@ -463,6 +509,7 @@ elif page == "dashboard":
                         textinfo='text',
                         textposition='inside',
                         insidetextorientation='horizontal',
+                        textfont=dict(size=18), # <--- ADD THIS LINE HERE
                         # Use customdata to force the correct numbers into the hover box
                         customdata=summary_fixed[['Hover_Amt']].values,
                         hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
@@ -516,6 +563,7 @@ elif page == "dashboard":
                         textinfo='text',
                         textposition='inside',
                         insidetextorientation='horizontal',
+                        textfont=dict(size=18), # <--- ADD THIS LINE HERE
                         customdata=summary_var[['Hover_Amt']].values,
                         hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
                         marker=dict(colors=[CATEGORY_COLORS.get(cat, '#CFD8DC') for cat in summary_var['Category']]),
