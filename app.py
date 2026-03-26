@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
 from data_processor import process_files
 from streamlit_option_menu import option_menu
 from categories import EXPENSE_TYPES, CATEGORY_RULES, CATEGORY_ICONS # Add CATEGORY_ICONS to import
+from streamlit_plotly_events import plotly_events
 import database
 from categories import EXPENSE_TYPES, CATEGORY_RULES 
 
@@ -77,6 +79,12 @@ st.markdown("""
 # --- 2. LOAD DATA ---
 df = database.load_all_transactions()
 uncat_count = len(df[df['Category'] == 'Uncategorized']) if not df.empty else 0
+
+# --- INITIALIZE SESSION STATE ---
+if 'selected_category' not in st.session_state:
+    st.session_state.selected_category = None
+if 'selected_month' not in st.session_state:
+    st.session_state.selected_month = "All Time"
 
 
 # --- SIDEBAR: NAVIGATION ---
@@ -163,6 +171,41 @@ if df.empty:
 # --- GLOBAL PROCESSING ---
 df['Month_Year'] = df['Date'].dt.to_period('M')
 df['Type_Tag'] = df['Category'].map(ALL_CATEGORIES).fillna('Variable') 
+
+# ==========================================
+#      VIEW: CATEGORY DRILL-DOWN PAGE
+# ==========================================
+if st.session_state.selected_category:
+    st.header(f"🗂️ Transactions for: {st.session_state.selected_category}")
+    
+    # Back button to return to the dashboard
+    if st.button("⬅️ Back to Dashboard"):
+        st.session_state.selected_category = None
+        st.rerun()
+        
+    # Filter Data for the selected category and month
+    detail_df = df[df['Category'] == st.session_state.selected_category].copy()
+    
+    selected_m = st.session_state.selected_month
+    if selected_m != "All Time":
+        detail_df = detail_df[detail_df['Month_Year'].astype(str) == selected_m]
+        
+    st.subheader(f"Timeframe: {selected_m}")
+    
+    # Display the transactions in a clean table
+    if detail_df.empty:
+        st.info("No transactions found for this category in the selected timeframe.")
+    else:
+        st.dataframe(
+            detail_df[['Date', 'Description', 'Amount', 'Type_Tag', 'Source']], 
+            hide_index=True, 
+            use_container_width=True
+        )
+        
+    # Stop rendering the rest of the app so it acts as a separate page
+    st.stop()
+
+
 
 # ==========================================
 #      VIEW: CATEGORIZATION
@@ -281,6 +324,8 @@ elif page == "dashboard":
             index=default_index,
             format_func=lambda x: "All Time" if x == "All Time" else datetime.strptime(x, '%Y-%m').strftime('%B %Y')
         )
+        #Saving selected month
+        st.session_state.selected_month = selected_month
 
     # 3. FILTER DATA (Current vs Previous)
     
@@ -366,48 +411,49 @@ elif page == "dashboard":
                 st.markdown(f"**🔒 Fixed: {fixed_total:,.0f} kr**")
                 
                 if not fixed_df.empty:
-                    # 1. Prepare Data
-                    summary_fixed = fixed_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    # 1. Aggregation and Sorting
+                    summary_fixed = fixed_df.groupby('Category', as_index=False)['Abs_Amount'].sum()
                     summary_fixed = summary_fixed.sort_values(by='Abs_Amount', ascending=False)
                     
-                    # 2. Calculate Percentages and Labels
+                    # 2. Pre-calculate values to ensure Hover Accuracy
                     total_f = summary_fixed['Abs_Amount'].sum()
-                    summary_fixed['Percent'] = (summary_fixed['Abs_Amount'] / total_f * 100).round(1)
-                    summary_fixed['Custom_Label'] = (
+                    summary_fixed['Pct_Val'] = (summary_fixed['Abs_Amount'] / total_f * 100).round(1)
+                    
+                    # Create the visual labels and hover strings
+                    summary_fixed['Display_Label'] = (
                         summary_fixed['Category'].map(CATEGORY_ICONS).fillna('❓') + 
-                        "<br>" + summary_fixed['Percent'].astype(str) + "%"
+                        "<br>" + summary_fixed['Pct_Val'].astype(str) + "%"
                     )
+                    summary_fixed['Hover_Amt'] = summary_fixed['Abs_Amount'].apply(lambda x: f"{x:,.0f} kr")
+                    summary_fixed['Hover_Pct'] = summary_fixed['Pct_Val'].astype(str) + "%"
 
-                    # 3. CREATE the figure (This defines 'fig_fixed')
-                    fig_fixed = px.pie(
-                        summary_fixed, 
-                        values='Abs_Amount', 
-                        names='Category', 
-                        hole=0.5, 
-                        color='Category', 
-                        color_discrete_map=CATEGORY_COLORS
-                    )
-                    
-                    # 4. UPDATE the figure
-                    fig_fixed.update_traces(
-                        textinfo='text', 
-                        text=summary_fixed['Custom_Label'],
+                    # 3. Create Figure with LISTS and CUSTOMDATA
+                    fig_fixed = go.Figure(data=[go.Pie(
+                        labels=summary_fixed['Category'].tolist(),
+                        values=summary_fixed['Abs_Amount'].tolist(),
+                        hole=0.5,
+                        text=summary_fixed['Display_Label'].tolist(),
+                        textinfo='text',
                         textposition='inside',
-                        textfont_size=30,
                         insidetextorientation='horizontal',
-                        hovertemplate='%{label}: %{value:,.0f} kr'
-                    )
+                        # Use customdata to force the correct numbers into the hover box
+                        customdata=summary_fixed[['Hover_Amt']].values,
+                        hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
+                        marker=dict(colors=[CATEGORY_COLORS.get(cat, '#CFD8DC') for cat in summary_fixed['Category']]),
+                        sort=False # Essential: keeps data aligned with our sorted dataframe
+                    )])
                     
-                    fig_fixed.update_layout(
-                        uniformtext_minsize=13, 
-                        uniformtext_mode='hide',
-                        height=350, 
-                        margin=dict(t=10, b=10, l=10, r=10), 
-                        showlegend=False
-                    )
+                    fig_fixed.update_layout(height=350, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
                     
-                    # 5. DISPLAY the figure
-                    st.plotly_chart(fig_fixed, use_container_width=True)
+                    # 4. Handle Click Events correctly
+                    fixed_clicks = plotly_events(fig_fixed, click_event=True, key="fixed_pie_final")
+                    
+                    if fixed_clicks:
+                        point_idx = fixed_clicks[0].get('pointNumber')
+                        if point_idx is not None:
+                            # Use .iloc to get the category name from the same row index Plotly clicked
+                            st.session_state.selected_category = summary_fixed.iloc[point_idx]['Category']
+                            st.rerun()
                 else:
                     st.info("No fixed expenses.")
 
@@ -419,51 +465,48 @@ elif page == "dashboard":
                 st.markdown(f"**🛒 Variable: {var_total:,.0f} kr**")
                 
                 if not var_df.empty:
-                    # 1. Prepare Data
-                    summary_var = var_df.groupby('Category')['Abs_Amount'].sum().reset_index()
+                    # 1. Aggregation and Sorting
+                    summary_var = var_df.groupby('Category', as_index=False)['Abs_Amount'].sum()
                     summary_var = summary_var.sort_values(by='Abs_Amount', ascending=False)
                     
-                    # 2. Calculate Percentages and Labels
+                    # 2. Pre-calculate values
                     total_v = summary_var['Abs_Amount'].sum()
-                    summary_var['Percent'] = (summary_var['Abs_Amount'] / total_v * 100).round(1)
-                    summary_var['Custom_Label'] = (
-                        summary_var['Category'].map(CATEGORY_ICONS).fillna('❓') + 
-                        "<br>" + summary_var['Percent'].astype(str) + "%"
-                    )
-
-                    # 3. CREATE the figure (This defines 'fig_var')
-                    fig_var = px.pie(
-                        summary_var, 
-                        values='Abs_Amount', 
-                        names='Category', 
-                        hole=0.5, 
-                        color='Category', 
-                        color_discrete_map=CATEGORY_COLORS
-                    )
+                    summary_var['Pct_Val'] = (summary_var['Abs_Amount'] / total_v * 100).round(1)
                     
-                    # 4. UPDATE the figure
-                    fig_var.update_traces(
-                        textinfo='text', 
-                        text=summary_var['Custom_Label'],
-                        textfont_size=30,
+                    summary_var['Display_Label'] = (
+                        summary_var['Category'].map(CATEGORY_ICONS).fillna('❓') + 
+                        "<br>" + summary_var['Pct_Val'].astype(str) + "%"
+                    )
+                    summary_var['Hover_Amt'] = summary_var['Abs_Amount'].apply(lambda x: f"{x:,.0f} kr")
+                    summary_var['Hover_Pct'] = summary_var['Pct_Val'].astype(str) + "%"
+
+                    # 3. Create Figure
+                    fig_var = go.Figure(data=[go.Pie(
+                        labels=summary_var['Category'].tolist(),
+                        values=summary_var['Abs_Amount'].tolist(),
+                        hole=0.5,
+                        text=summary_var['Display_Label'].tolist(),
+                        textinfo='text',
                         textposition='inside',
                         insidetextorientation='horizontal',
-                        hovertemplate='%{label}: %{value:,.0f} kr'
-                    )
+                        customdata=summary_var[['Hover_Amt']].values,
+                        hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
+                        marker=dict(colors=[CATEGORY_COLORS.get(cat, '#CFD8DC') for cat in summary_var['Category']]),
+                        sort=False
+                    )])
                     
-                    fig_var.update_layout(
-                        uniformtext_minsize=13, 
-                        uniformtext_mode='hide',
-                        height=350, 
-                        margin=dict(t=10, b=10, l=10, r=10), 
-                        showlegend=False
-                    )
+                    fig_var.update_layout(height=350, margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
                     
-                    # 5. DISPLAY the figure
-                    st.plotly_chart(fig_var, use_container_width=True)
+                    var_clicks = plotly_events(fig_var, click_event=True, key="var_pie_final")
+                    
+                    if var_clicks:
+                        point_idx = var_clicks[0].get('pointNumber')
+                        if point_idx is not None:
+                            st.session_state.selected_category = summary_var.iloc[point_idx]['Category']
+                            st.rerun()
                 else:
                     st.info("No variable expenses.")
-
+                    
     # --- INTEGRATED FIXED VS VARIABLE SECTION ---
     st.divider()
     st.subheader("⚖️ Fixed vs Variable (Monthly Analysis)")
