@@ -27,18 +27,45 @@ CATEGORY_LIST = list(ALL_CATEGORIES.keys())
 # --- DYNAMIC COLOR GENERATOR ---
 # Since categories are now dynamic, we can't hardcode all colors.
 # This function maps your known colors and generates grey/random for new ones.
+# --- DYNAMIC COLOR GENERATOR ---
 def get_category_color_map():
+    # 1. Define specific colors for all known categories from your categories.py
     base_colors = {
         "Groceries": "#AED581", "Dining/Drinks": "#FF8A65", "Rent": "#64B5F6",
         "Mortgage": "#42A5F5", "Utilities": "#FFD54F", "Travel": "#4DB6AC",
         "Shopping": "#BA68C8", "Car": "#90A4AE", "Insurance": "#E57373",
         "Subscriptions": "#9575CD", "Saving": "#81C784", "Income": "#66BB6A",
-        "Transfer": "#E0E0E0", "Uncategorized": "#E0E0E0"
+        "Transfer": "#E0E0E0", "Uncategorized": "#E0E0E0",
+        
+        # Added the missing categories
+        "Electronics": "#4DD0E1", 
+        "Furniture & Appliances": "#DCE775", 
+        "Vipps (Unsorted)": "#FF8A80", 
+        "Gifts": "#F06292", 
+        "Recreation & Well Beeing": "#FFF176", 
+        "Health": "#E53935", 
+        "Misc": "#BCAAA4"
     }
-    # Ensure every category in DB has a color (default to grey if unknown)
+    
+    # 2. Provide a rich palette for any dynamically added categories in the future
+    extra_colors = [
+        "#F44336", "#9C27B0", "#3F51B5", "#03A9F4", "#009688", 
+        "#8BC34A", "#FFC107", "#FF5722", "#795548", "#607D8B",
+        "#E91E63", "#673AB7", "#2196F3", "#00BCD4", "#4CAF50",
+        "#CDDC39", "#FF9800", "#FFCDD2", "#C5CAE9", "#B2DFDB"
+    ]
+    
     full_map = {}
+    extra_color_idx = 0
+    
     for cat in CATEGORY_LIST:
-        full_map[cat] = base_colors.get(cat, "#CFD8DC") # Default Grey
+        if cat in base_colors:
+            full_map[cat] = base_colors[cat]
+        else:
+            # Assign a distinct color from extra_colors instead of just grey
+            full_map[cat] = extra_colors[extra_color_idx % len(extra_colors)]
+            extra_color_idx += 1
+            
     return full_map
 
 CATEGORY_COLORS = get_category_color_map()
@@ -176,22 +203,69 @@ df['Type_Tag'] = df['Category'].map(ALL_CATEGORIES).fillna('Variable')
 #      VIEW: CATEGORY DRILL-DOWN PAGE
 # ==========================================
 if st.session_state.selected_category:
-    st.header(f"🗂️ Transactions for: {st.session_state.selected_category}")
+    selected_cat = st.session_state.selected_category
+    st.header(f"🗂️ Transactions for: {selected_cat}")
     
     # Back button to return to the dashboard
     if st.button("⬅️ Back to Dashboard"):
         st.session_state.selected_category = None
         st.rerun()
         
-    # Filter Data for the selected category and month
-    detail_df = df[df['Category'] == st.session_state.selected_category].copy()
+    # Filter Data for the selected category and month (for the table)
+    detail_df = df[df['Category'] == selected_cat].copy()
     
     selected_m = st.session_state.selected_month
     if selected_m != "All Time":
         detail_df = detail_df[detail_df['Month_Year'].astype(str) == selected_m]
+        # Convert "YYYY-MM" to "Month YYYY" (e.g., "February 2024")
+        display_month = datetime.strptime(selected_m, "%Y-%m").strftime("%B %Y")
+    else:
+        display_month = "All Time"
         
-    st.subheader(f"Timeframe: {selected_m}")
+     # --- NEW: 12-MONTH TREND CHART ---
+    st.divider()
+    st.subheader(f"📈 12-Month Spending Trend for {selected_cat}")
     
+    # Use the global 'df' to get all historical data for this category
+    trend_df = df[df['Category'] == selected_cat].copy()
+    
+    if not trend_df.empty:
+        # Group by Month
+        trend_df['Month_Str'] = trend_df['Month_Year'].astype(str)
+        monthly_trend = trend_df.groupby('Month_Str')['Amount'].sum().reset_index()
+        
+        # Convert amounts to absolute values (so expenses show as positive bars)
+        monthly_trend['Abs_Amount'] = monthly_trend['Amount'].abs()
+        
+        # Sort chronologically and take the last 12 months
+        monthly_trend = monthly_trend.sort_values('Month_Str').tail(12)
+        
+        # Plot using Plotly Express (px)
+        fig = px.bar(
+            monthly_trend, 
+            x='Month_Str', 
+            y='Abs_Amount',
+            text_auto='.0f', # Shows the amount on top of the bars
+            labels={'Month_Str': 'Month', 'Abs_Amount': 'Amount'},
+            color_discrete_sequence=[CATEGORY_COLORS.get(selected_cat, '#4285F4')] # Uses the category's assigned color
+        )
+        
+        # Clean up the chart layout
+        fig.update_traces(textposition='outside')
+        fig.update_layout(
+            xaxis_title=None, 
+            yaxis_title="Amount", 
+            height=350,
+            margin=dict(t=20, b=20, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No historical data available for a trend chart.")
+    
+    # Updated to use the correctly formatted month string
+    st.subheader(f"Transaction details: {display_month}")
+
     # Display the transactions in a clean table
     if detail_df.empty:
         st.info("No transactions found for this category in the selected timeframe.")
@@ -204,7 +278,6 @@ if st.session_state.selected_category:
         
     # Stop rendering the rest of the app so it acts as a separate page
     st.stop()
-
 
 
 # ==========================================
@@ -436,6 +509,7 @@ elif page == "dashboard":
                         textinfo='text',
                         textposition='inside',
                         insidetextorientation='horizontal',
+                        textfont=dict(size=18), # <--- ADD THIS LINE HERE
                         # Use customdata to force the correct numbers into the hover box
                         customdata=summary_fixed[['Hover_Amt']].values,
                         hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
@@ -489,6 +563,7 @@ elif page == "dashboard":
                         textinfo='text',
                         textposition='inside',
                         insidetextorientation='horizontal',
+                        textfont=dict(size=18), # <--- ADD THIS LINE HERE
                         customdata=summary_var[['Hover_Amt']].values,
                         hovertemplate="<b>%{label}</b><br>Sum: %{customdata[0]}<extra></extra>",
                         marker=dict(colors=[CATEGORY_COLORS.get(cat, '#CFD8DC') for cat in summary_var['Category']]),
