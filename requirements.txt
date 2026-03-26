@@ -1,0 +1,6 @@
+streamlit-plotly-events
+streamlit
+pandas
+plotly
+streamlit-plotly-events
+streamlit-option-menu
