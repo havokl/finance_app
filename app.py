@@ -27,18 +27,45 @@ CATEGORY_LIST = list(ALL_CATEGORIES.keys())
 # --- DYNAMIC COLOR GENERATOR ---
 # Since categories are now dynamic, we can't hardcode all colors.
 # This function maps your known colors and generates grey/random for new ones.
+# --- DYNAMIC COLOR GENERATOR ---
 def get_category_color_map():
+    # 1. Define specific colors for all known categories from your categories.py
     base_colors = {
         "Groceries": "#AED581", "Dining/Drinks": "#FF8A65", "Rent": "#64B5F6",
         "Mortgage": "#42A5F5", "Utilities": "#FFD54F", "Travel": "#4DB6AC",
         "Shopping": "#BA68C8", "Car": "#90A4AE", "Insurance": "#E57373",
         "Subscriptions": "#9575CD", "Saving": "#81C784", "Income": "#66BB6A",
-        "Transfer": "#E0E0E0", "Uncategorized": "#E0E0E0"
+        "Transfer": "#E0E0E0", "Uncategorized": "#E0E0E0",
+        
+        # Added the missing categories
+        "Electronics": "#4DD0E1", 
+        "Furniture & Appliances": "#DCE775", 
+        "Vipps (Unsorted)": "#FF8A80", 
+        "Gifts": "#F06292", 
+        "Recreation & Well Beeing": "#FFF176", 
+        "Health": "#E53935", 
+        "Misc": "#BCAAA4"
     }
-    # Ensure every category in DB has a color (default to grey if unknown)
+    
+    # 2. Provide a rich palette for any dynamically added categories in the future
+    extra_colors = [
+        "#F44336", "#9C27B0", "#3F51B5", "#03A9F4", "#009688", 
+        "#8BC34A", "#FFC107", "#FF5722", "#795548", "#607D8B",
+        "#E91E63", "#673AB7", "#2196F3", "#00BCD4", "#4CAF50",
+        "#CDDC39", "#FF9800", "#FFCDD2", "#C5CAE9", "#B2DFDB"
+    ]
+    
     full_map = {}
+    extra_color_idx = 0
+    
     for cat in CATEGORY_LIST:
-        full_map[cat] = base_colors.get(cat, "#CFD8DC") # Default Grey
+        if cat in base_colors:
+            full_map[cat] = base_colors[cat]
+        else:
+            # Assign a distinct color from extra_colors instead of just grey
+            full_map[cat] = extra_colors[extra_color_idx % len(extra_colors)]
+            extra_color_idx += 1
+            
     return full_map
 
 CATEGORY_COLORS = get_category_color_map()
